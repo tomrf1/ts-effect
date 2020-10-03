@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "commonjs",
+    "outDir": "./target",
+    "sourceMap": true,
+    "strict": true
+  },
+  "include": [
+    "./index.ts",
+    "./**/*.ts"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "ts-effect",
+  "dependencies": {
+    "typescript": "4.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "14.11.2"
+  },
+  "scripts": {
+    "clean": "rm -rf target",
+    "build": "tsc",
+    "examples": "npm run build && node target/examples/examples.js"
+  }
+}
