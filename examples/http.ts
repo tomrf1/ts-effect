@@ -33,13 +33,13 @@ const withEffect = (s: string): Promise<Response> =>
         .runP();
 
 const runExample = (f: (s: string) => Promise<Response>, name: string) => f('1')
-    .catch(err => {
-        console.log(`http ${name} failed: ${err}`);
-        return { status: 500, body: 'not ok'};
-    })
     .then(result => {
         console.log(`http ${name} success: ${JSON.stringify(result)}`);
         return result;
+    })
+    .catch(err => {
+        console.log(`http ${name} failed: ${err}`);
+        return { status: 500, body: 'not ok'};
     });
 
 export default {
