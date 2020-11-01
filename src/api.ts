@@ -5,7 +5,13 @@ import {Effect, Completable, Complete} from "./effect";
 // Creates a Complete<A> from the given success + failure handlers
 const complete = <A>(onSuccess: (a: A) => void, onFailure: (err: Error) => void): Complete<A> => (result: Either<Error,A>) =>
     E.fold<Error,A,void>(result)(
-        a => onSuccess(a),
+        a => {
+            try {
+                onSuccess(a)
+            } catch (err) {
+                onFailure(err)
+            }
+        },
         err => onFailure(err)
     );
 
@@ -74,7 +80,7 @@ const filter = <A>(c: Completable<A>) => (p: (a: A) => boolean, e: (a: A) => Err
             completeA(E.right(a)) :
             completeA(E.left(e(a))
         ),
-        err => E.right(err)
+        err => completeA(E.left(err))
     ))
 );
 
@@ -84,7 +90,7 @@ const validate = <A,B>(c: Completable<A>) => (f: (a: A) => Either<Error,B>): Eff
             b => completeB(E.right(b)),
             err => completeB(E.left(err))
         ),
-        err => E.right((err))
+        err => completeB(E.left((err)))
     ))
 );
 
