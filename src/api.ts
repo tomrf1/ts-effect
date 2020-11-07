@@ -115,21 +115,21 @@ const recoverWith = <A>(c: Completable<A>) => (f: (e: Error) => Effect<A>): Effe
     ))
 );
 
-const effect = <A>(f: Completable<A>): Effect<A> => ({
-    run: run(f),
-    runP: runP(f),
-    map: map(f),
-    flatMap: flatMap(f),
-    flatMapP: flatMapP(f),
-    flatZip: flatZip(f),
-    flatZipWith: flatZipWith(f),
-    flatZipP: flatZipP(f),
-    flatZipWithP: flatZipWithP(f),
-    filter: filter(f),
-    validate: validate(f),
-    mapError: mapError(f),
-    recover: recover(f),
-    recoverWith: recoverWith(f)
+const effect = <A>(c: Completable<A>): Effect<A> => ({
+    run: run(c),
+    runP: runP(c),
+    map: map(c),
+    flatMap: flatMap(c),
+    flatMapP: flatMapP(c),
+    flatZip: flatZip(c),
+    flatZipWith: flatZipWith(c),
+    flatZipP: flatZipP(c),
+    flatZipWithP: flatZipWithP(c),
+    filter: filter(c),
+    validate: validate(c),
+    mapError: mapError(c),
+    recover: recover(c),
+    recoverWith: recoverWith(c)
 });
 
 const fromPromise = <A>(lazy: () => Promise<A>): Effect<A> => effect((complete: Complete<A>) =>
