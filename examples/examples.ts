@@ -2,17 +2,15 @@ import Http from './http';
 import FileIO from './fileIO';
 import Reuse from './reuse';
 import StackSafety from './stackSafety';
-import {v2} from './v2';
 
-// Http.without();
-// Http.with();
-//
-// FileIO.without();
-// FileIO.with();
-//
-// Reuse.without();
-// Reuse.with();
+Http.without();
+Http.with();
 
-// StackSafety.with();
+FileIO.without();
+FileIO.with();
 
-v2();
+Reuse.without();
+Reuse.with();
+
+StackSafety.without();
+StackSafety.with();

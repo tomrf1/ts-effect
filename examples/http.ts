@@ -25,7 +25,7 @@ const withoutEffect = (s: string): Promise<Response> => {
 };
 
 const withEffect = (s: string): Promise<Response> =>
-    E.pure(parseInt(s))
+    E.succeed(parseInt(s))
         .filter(n => !isNaN(n), n => Error('is NaN'))
         .flatMapP(makeRequest)
         .filter(resp => resp.status === 200,resp => Error(`Wrong status: ${resp.status}`))
