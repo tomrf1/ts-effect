@@ -29,8 +29,14 @@ describe('Effect', () => {
         await expect(p).resolves.toEqual(2);
     });
 
-    it('flatMap with failure', async () => {
-        const p = effect.flatMap(x => {throw err}).runP();
+    it('flatMap with failure (run)', async () => {
+        const complete = jest.fn();
+        effect.flatMap<number>(x => {throw err}).map(n => n *2).run(complete);
+        expect(complete).toBeCalledWith(left(err));
+    });
+
+    it('flatMap with failure (runP)', async () => {
+        const p = effect.flatMap<number>(x => {throw err}).map(n => n *2).runP();
         await expect(p).rejects.toBe(err);
     });
 

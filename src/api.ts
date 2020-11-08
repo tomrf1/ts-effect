@@ -85,113 +85,99 @@ type ContinuationStack = Continuation<any,any>[];
 
 // Run the program described by the Effect. We ensure stack-safety by pushing continuations to a stack inside a loop
 const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: ContinuationStack): void => {
-    //console.log("run with ", stack.length)
-
     let current: Effect<any> | null = effect;
 
-    /**
-     * Error handling
-     * - every instance of next.f() needs to be caught
-     * - syncEffect.f()
-     * - asyncEffect.completable()
-     * -
-     */
-
     while (current !== null) {
-        const e = current;
+        const e: Effect<any> = current;
 
-        switch (e.type) {
-            case 'SucceedEffect': {
-                const succeedEffect = e as SucceedEffect<any>;
-                //console.log("SucceedEffect", stack.length)
-                const next = nextSuccess(stack);
-                if (next) {
-                    current = next.f(succeedEffect.value)
-                } else {
-                    current = null;
-                    complete(right(succeedEffect.value))
+        try {
+            switch (e.type) {
+                case 'SucceedEffect': {
+                    const succeedEffect = e as SucceedEffect<any>;
+                    const next = nextSuccess(stack);
+                    if (next) {
+                        current = next.f(succeedEffect.value)
+                    } else {
+                        current = null;
+                        complete(right(succeedEffect.value))
+                    }
+
+                    break;
                 }
+                case 'SyncEffect': {
+                    const syncEffect = e as SyncEffect<any>;
+                    const next = nextSuccess(stack);
+                    const result = syncEffect.f();
+                    if (next) {
+                        current = next.f(result)
+                    } else {
+                        current = null;
+                        complete(right(result))
+                    }
 
-                break;
-            }
-            case 'SyncEffect': {
-                const syncEffect = e as SyncEffect<any>;
-                //console.log("SyncEffect", stack.length)
-
-                const next = nextSuccess(stack);
-                const result = syncEffect.f();
-                if (next) {
-                    current = next.f(result)
-                } else {
-                    current = null;
-                    complete(right(result))
+                    break;
                 }
+                case 'AsyncEffect': {
+                    const asyncEffect = e as AsyncEffect<any>;
 
-                break;
-            }
-            case 'AsyncEffect': {
-                const asyncEffect = e as AsyncEffect<any>;
-                //console.log("AsyncEffect", stack.length)
-
-                asyncEffect.completable((result: Either<Error, A>) => {
-                    fold(result)(
-                        a => {
-                            const next = nextSuccess(stack);
-                            if (next) {
-                                // ugh...
-                                run(next.f(a) as Effect<A>)(complete, stack);
-                            } else {
-                                complete(right(a));
+                    asyncEffect.completable((result: Either<Error, A>) => {
+                        fold(result)(
+                            a => {
+                                const next = nextSuccess(stack);
+                                if (next) {
+                                    // ugh...
+                                    run(next.f(a) as Effect<A>)(complete, stack);
+                                } else {
+                                    complete(right(a));
+                                }
+                            },
+                            err => {
+                                const next = nextFailure(stack);
+                                if (next) {
+                                    // ugh...
+                                    run(next.f(err) as Effect<A>)(complete, stack);
+                                } else {
+                                    complete(left(err));
+                                }
                             }
-                        },
-                        err => {
-                            const next = nextFailure(stack);
-                            if (next) {
-                                // ugh...
-                                run(next.f(err) as Effect<A>)(complete, stack);
-                            } else {
-                                complete(left(err));
-                            }
-                        }
-                    )
-                });
+                        )
+                    });
 
-                current = null;
-
-                break;
-            }
-            case 'FlatMapEffect': {
-                const flatMapEffect = e as FlatMapEffect<any,any>;
-                current = flatMapEffect.effect;
-                //console.log("FlatMapEffect", stack.length)
-                stack.push(successContinuation(flatMapEffect.f));
-
-                break;
-            }
-            case 'FailEffect': {
-                const failEffect = e as FailEffect<any>;
-                //console.log("FailEffect", stack.length)
-                const next = nextFailure(stack);
-                if (next) {
-                    current = next.f(failEffect.error);
-                } else {
                     current = null;
-                    complete(left(failEffect.error));
+
+                    break;
                 }
+                case 'FlatMapEffect': {
+                    const flatMapEffect = e as FlatMapEffect<any, any>;
+                    current = flatMapEffect.effect;
+                    stack.push(successContinuation(flatMapEffect.f));
 
-                break;
-            }
-            case 'RecoverEffect': {
-                const recoverEffect = e as RecoverEffect<any>;
-                current = recoverEffect.effect;
-                //console.log("RecoverEffect", stack.length)
-                stack.push(failureContinuation(recoverEffect.r));
+                    break;
+                }
+                case 'FailEffect': {
+                    const failEffect = e as FailEffect<any>;
+                    const next = nextFailure(stack);
+                    if (next) {
+                        current = next.f(failEffect.error);
+                    } else {
+                        current = null;
+                        complete(left(failEffect.error));
+                    }
 
-                break;
+                    break;
+                }
+                case 'RecoverEffect': {
+                    const recoverEffect = e as RecoverEffect<any>;
+                    current = recoverEffect.effect;
+                    stack.push(failureContinuation(recoverEffect.r));
+
+                    break;
+                }
+                default:
+                    current = fail(Error(`Unknown Effect type found by interpreter: ${e.type}`));
             }
-            default:
-                //console.log("unknown effect", e.type);
-                current = null;
+        } catch (err) {
+            current = fail(err);
         }
     }
 };
