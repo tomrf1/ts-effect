@@ -71,21 +71,21 @@ export abstract class Effect<A> {
         return flatMap(this, continuation)
     }
 
-    // Like flatMap, but combines the two Effects into a tuple
+    // Like flatMap, but combines the two Effect results into a tuple
     flatZip<B>(f: (a: A) => Effect<B>): FlatMapEffect<A, [A,B]> {
         return flatMap<A, [A,B]>(this, (a: A) =>
             f(a).map(b => ([a,b]))
         )
     }
 
-    // Like flatMap, but combines the two Effects using the given function
+    // Like flatMap, but combines the two Effect results using the given function
     flatZipWith<B,Z>(f: (a: A) => Effect<B>, z: (a: A, b: B) => Z): FlatMapEffect<A,Z> {
         return flatMap<A, Z>(this, (a: A) =>
             f(a).map(b => z(a,b))
         )
     }
 
-    // Like flatMapP, but combines the two Effects into a tuple
+    // Like flatMapP, but combines the two Effect results into a tuple
     flatZipP<B>(f: (a: A) => Promise<B>): FlatMapEffect<A, [A,B]> {
         const continuation = (a: A) => async<[A,B]>(complete =>
             f(a)
@@ -96,7 +96,7 @@ export abstract class Effect<A> {
         return flatMap(this, continuation)
     }
 
-    // Like flatMapP, but combines the two Effects using the given function
+    // Like flatMapP, but combines the two Effect results using the given function
     flatZipWithP<B,Z>(f: (a: A) => Promise<B>, z: (a: A, b: B) => Z): FlatMapEffect<A, Z> {
         const continuation = (a: A) => async<Z>(complete =>
             f(a)
