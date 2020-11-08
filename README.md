@@ -28,5 +28,4 @@ fetchData(url).run((result: Either<Error,MyData>) => fold(result)(
 
 
 ##### Possible TODOs:
-1. Not stack safe (not compatible with chaining?)
-2. No support for interrupts
+1. No support for interrupts
