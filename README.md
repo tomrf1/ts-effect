@@ -28,4 +28,5 @@ fetchData(url).run((result: Either<Error,MyData>) => fold(result)(
 
 
 ##### Possible TODOs:
-1. No support for interrupts
+1. Support for interrupts
+2. Ensure stack-safety if an `AsyncEffect` isn't really async
