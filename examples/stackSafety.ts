@@ -13,7 +13,7 @@ import {right} from "../src/either";
  * With Effect however, it depends how we use it:
  * - if we use `map` or `flatMap` with a sync computation then it blocks until 10000 is reached because it does not go to the event loop.
  * - if we instead use flatMapP with a Promise then it does not block.
- * - if we use `flatMap` with an `async` Effect, but the computation is in fact synchronous, then it blows up with a stack overflow.
+ * - if we use `flatMap` with an `AsyncEffect`, but the computation is in fact synchronous, then it blows up with a stack overflow.
  */
 
 const incrementPromise = (p: Promise<number>): Promise<number> => p.then(n => n+1);
