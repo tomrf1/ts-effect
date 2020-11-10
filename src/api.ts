@@ -1,5 +1,6 @@
 import {Either, fold, left, right} from './either';
 import {Completable, Complete, Effect} from "./effect";
+import {ContinuationStack} from "./continuationStack";
 
 const succeed = <A>(a: A): SucceedEffect<A> => new SucceedEffect<A>(a);
 export class SucceedEffect<A> extends Effect<A> {
@@ -22,6 +23,7 @@ export class FlatMapEffect<A,B> extends Effect<B> {
     }
 }
 
+// Warning - if the computation is not genuinely async then this is not stack-safe
 const async = <A>(c: Completable<A>): AsyncEffect<A> => new AsyncEffect<A>(c);
 export class AsyncEffect<A> extends Effect<A> {
     completable: Completable<A>;
@@ -62,29 +64,8 @@ export class RecoverEffect<A> extends Effect<A> {
     }
 }
 
-// As composed Effects are interpreted they are added to a stack of Continuations, which includes any error handlers
-interface Continuation<A,B> {
-    type: 'Success' | 'Failure';
-    f: (x: A) => Effect<B>;
-}
-const successContinuation = <A,B>(f: (x: A) => Effect<B>): Continuation<A,B> => ({type: 'Success', f});
-const failureContinuation = <B>(f: (x: Error) => Effect<B>): Continuation<Error,B> => ({type: 'Failure', f});
-
-const nextContinuation = (stack: Continuation<any,any>[], type: 'Success' | 'Failure'): Continuation<any,any> | undefined => {
-    // Discard any Continuations until an appropriate handler is found
-    let next = stack.pop();
-    while (next && next.type !== type) {
-        next = stack.pop();
-    }
-    return next;
-};
-const nextSuccess = (stack: Continuation<any,any>[]) => nextContinuation(stack, 'Success');
-const nextFailure = (stack: Continuation<any,any>[]) => nextContinuation(stack, 'Failure');
-
-type ContinuationStack = Continuation<any,any>[];
-
-// Run the program described by the Effect. We ensure stack-safety by pushing continuations to a stack inside a loop
-const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: ContinuationStack): void => {
+// Run the program described by the Effect. We (mostly) ensure stack-safety by pushing continuations to a stack inside a loop
+const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: ContinuationStack<A>): void => {
     let current: Effect<any> | null = effect;
 
     while (current !== null) {
@@ -94,7 +75,7 @@ const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: Continuatio
             switch (e.type) {
                 case 'SucceedEffect': {
                     const succeedEffect = e as SucceedEffect<any>;
-                    const next = nextSuccess(stack);
+                    const next = stack.nextSuccess();
                     if (next) {
                         current = next.f(succeedEffect.value)
                     } else {
@@ -106,7 +87,7 @@ const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: Continuatio
                 }
                 case 'SyncEffect': {
                     const syncEffect = e as SyncEffect<any>;
-                    const next = nextSuccess(stack);
+                    const next = stack.nextSuccess();
                     const result = syncEffect.f();
                     if (next) {
                         current = next.f(result)
@@ -120,21 +101,20 @@ const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: Continuatio
                 case 'AsyncEffect': {
                     const asyncEffect = e as AsyncEffect<any>;
 
+                    // If the effect is not truly async then this is not stack-safe
                     asyncEffect.completable((result: Either<Error, A>) => {
                         fold(result)(
                             a => {
-                                const next = nextSuccess(stack);
+                                const next = stack.nextSuccess();
                                 if (next) {
-                                    // ugh...
                                     run(next.f(a) as Effect<A>)(complete, stack);
                                 } else {
                                     complete(right(a));
                                 }
                             },
                             err => {
-                                const next = nextFailure(stack);
+                                const next = stack.nextFailure();
                                 if (next) {
-                                    // ugh...
                                     run(next.f(err) as Effect<A>)(complete, stack);
                                 } else {
                                     complete(left(err));
@@ -150,13 +130,13 @@ const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: Continuatio
                 case 'FlatMapEffect': {
                     const flatMapEffect = e as FlatMapEffect<any, any>;
                     current = flatMapEffect.effect;
-                    stack.push(successContinuation(flatMapEffect.f));
+                    stack.pushSuccess(flatMapEffect.f);
 
                     break;
                 }
                 case 'FailEffect': {
                     const failEffect = e as FailEffect<any>;
-                    const next = nextFailure(stack);
+                    const next = stack.nextFailure();
                     if (next) {
                         current = next.f(failEffect.error);
                     } else {
@@ -169,7 +149,7 @@ const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: Continuatio
                 case 'RecoverEffect': {
                     const recoverEffect = e as RecoverEffect<any>;
                     current = recoverEffect.effect;
-                    stack.push(failureContinuation(recoverEffect.r));
+                    stack.pushFailure(recoverEffect.r);
 
                     break;
                 }

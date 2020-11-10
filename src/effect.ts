@@ -9,6 +9,7 @@ import {
     run,
     succeed
 } from "./api";
+import {ContinuationStack} from "./continuationStack";
 
 // The callback type for reporting the result of an Effect
 export type Complete<A> = (result: Either<Error,A>) => void;
@@ -27,7 +28,6 @@ type EffectType =
  * Models an effectful program.
  * Effects can be composed using the methods on this class
  */
-
 export abstract class Effect<A> {
     type: EffectType;
 
@@ -37,16 +37,17 @@ export abstract class Effect<A> {
 
     // Run the Effect with the given completion callback. Catches exceptions
     run(complete: Complete<A>): void {
-        run(this)(complete, [])
+        run(this)(complete, new ContinuationStack<A>())
     }
 
     // Run the Effect as a Promise
     runP(): Promise<A> {
         return new Promise((resolve, reject) => {
-            run(this)(result => fold(result)(
+            const complete = (result: Either<Error, A>) => fold(result)(
                 a => resolve(a),
                 err => reject(err)
-            ), []);
+            );
+            run(this)(complete, new ContinuationStack<A>());
         });
     }
 
