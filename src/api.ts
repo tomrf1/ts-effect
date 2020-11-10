@@ -162,7 +162,8 @@ const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: Continuatio
     }
 };
 
-const fromPromise = <A>(lazy: () => Promise<A>): Effect<A> => async((complete: Complete<A>) =>
+// Create an AsyncEffect from a Promise
+const asyncP = <A>(lazy: () => Promise<A>): Effect<A> => async((complete: Complete<A>) =>
     lazy()
         .then(a => complete(right(a)))
         .catch(err => left(err))
@@ -221,7 +222,7 @@ export {
     fail,
     recover,
     run,
-    fromPromise,
+    asyncP,
     manage,
     all
 }

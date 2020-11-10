@@ -4,15 +4,19 @@ An experiment to see if I can improve on `Promise` + `await` for async tasks and
 
 I'm not convinced I've achieved this.
 
-The `Effect` type lets us handle async computations as values, and chain operations.
+The `Effect` type (inspired by certain Scala libraries) lets us handle async computations as values, and chain operations.
 
 E.g.
 
 ```
+import * as E from '../src/api';
+import {Effect} from "../src/effect";
+import {fold, left, right} from "../src/either";
+
 interface MyData {x: number}
 
 const fetchData = (url: string): Effect<MyData> =>
-    E.fromPromise(() => fetch(url))
+    E.asyncP(() => fetch(url))
         .filter(resp => resp.status === 200, resp => Error(`Wrong status: ${resp.status}`))
         .flatMapP(resp => resp.json())
         .validate<MyData>(json => typeof json.x === 'number' ?
@@ -20,7 +24,7 @@ const fetchData = (url: string): Effect<MyData> =>
             left(Error(`Failed to deserialise ${json}`))
         );
 
-fetchData(url).run((result: Either<Error,MyData>) => fold(result)(
+fetchData(url).run(result => fold(result)(
     data => ... ,
     err => ...
 ));
@@ -29,4 +33,4 @@ fetchData(url).run((result: Either<Error,MyData>) => fold(result)(
 
 ##### Possible TODOs:
 1. Support for interrupts
-2. Ensure stack-safety if an `AsyncEffect` isn't really async
+2. Ensure stack-safety in the case where an `AsyncEffect` isn't really async

@@ -6,7 +6,11 @@ export interface Continuation<A,B> {
     f: (x: A) => Effect<B>;
 }
 export class ContinuationStack<A> {
-    private stack: Continuation<any,any>[] = [];
+    private stack: Continuation<any,any>[];
+
+    constructor() {
+        this.stack = [];
+    }
 
     nextContinuation(type: 'Success' | 'Failure'): Continuation<any,any> | undefined {
         // Discard any Continuations until an appropriate handler is found

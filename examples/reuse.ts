@@ -4,7 +4,7 @@ import * as E from '../src/api';
  * Example of re-using an earlier async result later on.
  * `await` is very useful in these cases.
  *
- * We can use Effect's flatZip functions to avoid nested flatMaps.
+ * We can use Effect's flatZip functions to avoid nested flatMaps, but it's not as simple as `await`.
  */
 
 type Result = {a: number, c: string};
@@ -21,7 +21,7 @@ const withoutEffect = async (): Promise<Result> => {
 };
 
 const withEffect = async (): Promise<Result> =>
-    E.fromPromise(getDependencyA)
+    E.asyncP(getDependencyA)
         .flatZipP(getDependencyB)
         .flatZipWithP(
             ([a,b]) => fetch(b),
