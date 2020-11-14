@@ -198,9 +198,16 @@ const manage = <A,B>(acquire: Effect<A>, release: (a: A) => void, f: (a: A) => E
 // type hacking to make `allG` accept a generic tuple type
 type ExtractType<T> = { [K in keyof T]: T[K] extends Effect<infer V> ? V : never };
 
-function allG<T extends Effect<any>[]>(
+/**
+ * Given an array of Effects, returns an Effect whose result is an array of the resulting values.
+ * The input array of Effects may be heterogeneous.
+ *
+ * Note - the compiler needs help with the type parameter here if you wish to handle the result as a tuple rather than an array, e.g.
+ *   `allG<[Effect<number>,Effect<string>]>([E.succeed(1), E.succeed('a')])`
+ */
+const allG = <T extends Effect<any>[]>(
     arr: T
-): Effect<ExtractType<T>> {
+): Effect<ExtractType<T>> => {
     return async((completeAll: Complete<ExtractType<T>>) => {
         let hasFailed = false;
         const buffer: any[] = [];
@@ -218,11 +225,9 @@ function allG<T extends Effect<any>[]>(
             }
         )))
     });
-}
+};
 
-function all<A>(arr: Effect<A>[]): Effect<A[]> {
-    return allG(arr);
-}
+const all = <A>(arr: Effect<A>[]): Effect<A[]> => allG(arr);
 
 export {
     succeed,
