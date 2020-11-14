@@ -195,24 +195,34 @@ const manage = <A,B>(acquire: Effect<A>, release: (a: A) => void, f: (a: A) => E
         }
     });
 
-// TODO - this requires all effects to have the same type. We can do what Promise does and define an `all` function for each array length
-const all = <A>(arr: Effect<A>[]): Effect<A[]> => async((completeAll: Complete<A[]>) => {
-    let hasFailed = false;
-    const buffer: A[] = [];
-    arr.forEach(e => e.run(result => fold(result)(
-        a => {
-            if (!hasFailed) {
-                buffer.push(a);
-                if (buffer.length === arr.length) completeAll(right(buffer));
+// type hacking to make `allG` accept a generic tuple type
+type ExtractType<T> = { [K in keyof T]: T[K] extends Effect<infer V> ? V : never };
+
+function allG<T extends Effect<any>[]>(
+    arr: T
+): Effect<ExtractType<T>> {
+    return async((completeAll: Complete<ExtractType<T>>) => {
+        let hasFailed = false;
+        const buffer: any[] = [];
+        arr.forEach(e => e.run(result => fold(result)(
+            a => {
+                if (!hasFailed) {
+                    buffer.push(a);
+                    if (buffer.length === arr.length) completeAll(right(buffer as ExtractType<T>));
+                }
+            },
+            err => {
+                // TODO - support interrupts?
+                hasFailed = true;
+                completeAll(left(err));
             }
-        },
-        err => {
-            // TODO - support interrupts?
-            hasFailed = true;
-            completeAll(left(err));
-        }
-    )))
-});
+        )))
+    });
+}
+
+function all<A>(arr: Effect<A>[]): Effect<A[]> {
+    return allG(arr);
+}
 
 export {
     succeed,
@@ -224,5 +234,6 @@ export {
     run,
     asyncP,
     manage,
-    all
+    all,
+    allG
 }
