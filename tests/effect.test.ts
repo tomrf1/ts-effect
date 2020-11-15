@@ -122,6 +122,14 @@ describe('Effect', () => {
         await expect(p).rejects.toBe(err);
     });
 
+    it('allG', async () => {
+        const p = E.allG<[Effect<number>,Effect<string>]>([E.succeed(1), E.succeed('a')])
+            .map(([n,s]: [number,string]) => `${n},${s}`)
+            .runP();
+
+        await expect(p).resolves.toEqual(`1,a`);
+    });
+
     it('manage success', async () => {
         const acquire: Effect<number> = E.succeed(1);
         const release = jest.fn().mockImplementation(() => { console.log('release') });

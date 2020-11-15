@@ -195,24 +195,39 @@ const manage = <A,B>(acquire: Effect<A>, release: (a: A) => void, f: (a: A) => E
         }
     });
 
-// TODO - this requires all effects to have the same type. We can do what Promise does and define an `all` function for each array length
-const all = <A>(arr: Effect<A>[]): Effect<A[]> => async((completeAll: Complete<A[]>) => {
-    let hasFailed = false;
-    const buffer: A[] = [];
-    arr.forEach(e => e.run(result => fold(result)(
-        a => {
-            if (!hasFailed) {
-                buffer.push(a);
-                if (buffer.length === arr.length) completeAll(right(buffer));
+// type hacking to make `allG` accept a generic tuple type
+type ExtractType<T> = { [K in keyof T]: T[K] extends Effect<infer V> ? V : never };
+
+/**
+ * Given an array of Effects, returns an Effect whose result is an array of the resulting values.
+ * The input array of Effects may be heterogeneous.
+ *
+ * Note - the compiler needs help with the type parameter here if you wish to handle the result as a tuple rather than an array, e.g.
+ *   `allG<[Effect<number>,Effect<string>]>([E.succeed(1), E.succeed('a')]).map(([n,s]) => ...)`
+ */
+const allG = <T extends Effect<any>[]>(
+    arr: T
+): Effect<ExtractType<T>> => {
+    return async((completeAll: Complete<ExtractType<T>>) => {
+        let hasFailed = false;
+        const buffer: any[] = [];
+        arr.forEach(e => e.run(result => fold(result)(
+            a => {
+                if (!hasFailed) {
+                    buffer.push(a);
+                    if (buffer.length === arr.length) completeAll(right(buffer as ExtractType<T>));
+                }
+            },
+            err => {
+                // TODO - support interrupts?
+                hasFailed = true;
+                completeAll(left(err));
             }
-        },
-        err => {
-            // TODO - support interrupts?
-            hasFailed = true;
-            completeAll(left(err));
-        }
-    )))
-});
+        )))
+    });
+};
+
+const all = <A>(arr: Effect<A>[]): Effect<A[]> => allG(arr);
 
 export {
     succeed,
@@ -224,5 +239,6 @@ export {
     run,
     asyncP,
     manage,
-    all
+    all,
+    allG
 }

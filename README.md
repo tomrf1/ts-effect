@@ -29,8 +29,3 @@ fetchData(url).run(result => fold(result)(
     err => ...
 ));
 ```
-
-
-##### Possible TODOs:
-1. Support for interrupts
-2. Ensure stack-safety in the case where an `AsyncEffect` isn't really async
