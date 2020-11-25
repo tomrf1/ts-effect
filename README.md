@@ -9,9 +9,9 @@ The `Effect` type (inspired by certain Scala libraries) lets us handle async com
 E.g.
 
 ```
-import * as E from '../src/api';
-import {Effect} from "../src/effect";
-import {fold, left, right} from "../src/either";
+import * as E from 'ts-effect/src/api';
+import {Effect} from "ts-effect/src/effect";
+import {fold, left, right} from "ts-effect/src/either";
 
 interface MyData {x: number}
 

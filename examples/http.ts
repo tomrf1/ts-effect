@@ -1,45 +1,69 @@
 import * as E from '../src/api';
+import {left, right} from '../src/either';
 
-interface Response {
-    status: number,
-    body: string,
+class Response {
+    status: number;
+    body: string;
+    constructor(status: number, body: string) {
+        this.status = status;
+        this.body = body;
+    }
+    json(): Promise<any> {
+        return Promise.resolve(JSON.parse(this.body))
+    }
 }
 
-const makeRequest = (n: number): Promise<Response> => Promise.resolve({ status: 200, body: 'ok' });
-const changeResponseBody = (body: string) => (response: Response): Response => ({...response, body});
+const makeRequest = (n: number): Promise<Response> => Promise.resolve(new Response(200, '{"x": "hello"}'));
 
-const withoutEffect = (s: string): Promise<Response> => {
-    const n = parseInt(s);
+const ServerError = new Response(500, 'Internal server error');
+const InvalidRequest = new Response(400, 'Invalid request');
+
+const withoutEffect = (body: string): Promise<Response> => {
+    const n = parseInt(body);
     if (isNaN(n)) {
-        return Promise.reject(Error('is NaN'));
+        return Promise.resolve(InvalidRequest);
     }
 
     return makeRequest(n)
-        .then(response => {
-            if (response.status !== 200) {
-                return Promise.reject(Error(`Wrong status: ${response.status}`));
-            } else {
-                return changeResponseBody('really ok')(response);
-            }
-        })
+        .then(resp => resp.status !== 200 ?
+            Promise.reject(Error(`Wrong status: ${resp.status}`)) :
+            resp
+        )
+        .then(resp => resp.json())
+        .then(json => typeof json.x === 'string' ?
+            new Response(200, `it says ${json.x}`) :
+            ServerError
+        )
+        .catch(err => {
+            console.error(`Failed with: ${err.message}`);
+            return ServerError;
+        });
 };
 
-const withEffect = (s: string): Promise<Response> =>
-    E.succeed(parseInt(s))
-        .filter(n => !isNaN(n), n => Error('is NaN'))
+const withEffect = (body: string): Promise<Response> =>
+    E.succeed(parseInt(body))
+        .filter(
+            n => !isNaN(n),
+            n => ({name: 'NAN', message: `${n} is NaN`}))
         .flatMapP(makeRequest)
-        .filter(resp => resp.status === 200,resp => Error(`Wrong status: ${resp.status}`))
-        .map(changeResponseBody('really ok'))
+        .filter(
+            resp => resp.status === 200,
+            resp => ({name: 'BAD_RESPONSE', message: `Wrong status: ${resp.status}`}))
+        .flatMapP(resp => resp.json())
+        .validate<Response>(json => typeof json.x === 'string' ?
+            right(new Response(200, `it says ${json.x}`)) :
+            left(({name: 'INVALID_DATA', message: 'Failed to parse data'})))
+        .recover(err => {
+            console.error(`Failed with: ${err.message}`);
+            if (err.name === 'NAN') return InvalidRequest;
+            else return ServerError;
+        })
         .runP();
 
-const runExample = (f: (s: string) => Promise<Response>, name: string) => f('1')
+const runExample = (f: (body: string) => Promise<Response>, name: string) => f('1')
     .then(result => {
         console.log(`http ${name} success: ${JSON.stringify(result)}`);
         return result;
-    })
-    .catch(err => {
-        console.log(`http ${name} failed: ${err}`);
-        return { status: 500, body: 'not ok'};
     });
 
 export default {
