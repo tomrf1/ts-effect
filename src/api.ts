@@ -195,6 +195,19 @@ const manage = <A,B>(acquire: Effect<A>, release: (a: A) => void, f: (a: A) => E
         }
     });
 
+// Each chain function type overload here ensures type safety for the caller
+function chain<A,B>(ea: Effect<A>, fs: [(a: A) => Effect<B>]): Effect<B>;
+function chain<A,B,C>(ea: Effect<A>, fs: [(a: A) => Effect<B>, (b: B) => Effect<C>]): Effect<C>;
+function chain<A,B,C,D>(ea: Effect<A>, fs: [(a: A) => Effect<B>, (b: B) => Effect<C>, (c: C) => Effect<D>]): Effect<D>;
+function chain<A,B,C,D,E>(ea: Effect<A>, fs: [(a: A) => Effect<B>, (b: B) => Effect<C>, (c: C) => Effect<D>, (d: D) => Effect<E>]): Effect<E>;
+function chain<A,B,C,D,E,F>(ea: Effect<A>, fs: [(a: A) => Effect<B>, (b: B) => Effect<C>, (c: C) => Effect<D>, (d: D) => Effect<E>, (e: E) => Effect<F>]): Effect<F>;
+function chain<A>(ea: Effect<A>, fs: ((x: any) => Effect<any>)[]): Effect<any> {
+    return fs.reduce(
+        (e, f) => e.flatMap(f),
+        ea
+    );
+}
+
 // type hacking to make `allG` accept a generic tuple type
 type ExtractType<T> = { [K in keyof T]: T[K] extends Effect<infer V> ? V : never };
 
@@ -240,5 +253,6 @@ export {
     asyncP,
     manage,
     all,
-    allG
+    allG,
+    chain
 }

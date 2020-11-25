@@ -162,4 +162,20 @@ describe('Effect', () => {
         await expect(p).rejects.toBe(err);
         expect(release).toHaveBeenCalledTimes(1);
     });
+
+    it('chain 1', async () => {
+        const p: Promise<string> = E.chain(
+            effect,
+            [n => E.succeed(`${n}`)]
+        ).runP();
+        await expect(p).resolves.toBe('1');
+    });
+
+    it('chain 2', async () => {
+        const p: Promise<boolean> = E.chain(
+            effect,
+            [n => E.succeed(`${n}`), s => E.succeed(true)]
+        ).runP();
+        await expect(p).resolves.toBe(true);
+    });
 });
