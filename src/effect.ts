@@ -28,7 +28,7 @@ type EffectType =
  * Models an effectful program.
  * Effects can be composed using the methods on this class
  */
-export abstract class Effect<A> {
+export abstract class Effect<E,A> {
     type: EffectType;
 
     constructor(type: EffectType) {

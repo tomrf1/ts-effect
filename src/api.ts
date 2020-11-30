@@ -65,16 +65,16 @@ export class RecoverEffect<A> extends Effect<A> {
 }
 
 // Run the program described by the Effect. We (mostly) ensure stack-safety by pushing continuations to a stack inside a loop
-const run = <A>(effect: Effect<A>) => (complete: Complete<A>, stack: ContinuationStack<A>): void => {
-    let current: Effect<any> | null = effect;
+const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<A>, stack: ContinuationStack<A>): void => {
+    let current: Effect<any,any> | null = effect;
 
     while (current !== null) {
-        const e: Effect<any> = current;
+        const e: Effect<any,any> = current;
 
         try {
             switch (e.type) {
                 case 'SucceedEffect': {
-                    const succeedEffect = e as SucceedEffect<any>;
+                    const succeedEffect = e as SucceedEffect<any,any>;
                     const next = stack.nextSuccess();
                     if (next) {
                         current = next.f(succeedEffect.value)
