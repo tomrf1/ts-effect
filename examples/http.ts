@@ -50,7 +50,7 @@ interface MyError {
 const error = (type: ErrorType, message: string): MyError => ({type, message});
 
 const withEffect = (body: string): Promise<Response> =>
-    E.succeed<number>(parseInt(body))
+    E.succeed(parseInt(body))
         .filter(n => !isNaN(n), n => error('NAN', `${n} is NaN`))
         .flatMapP(makeRequest)
         .filter(

@@ -36,7 +36,7 @@ const IOWithoutEffect = {
 };
 
 const IOWithEffect = {
-    openFile: (path: string): Effect<Error,number> => E.async<Error,number>(complete =>
+    openFile: (path: string): Effect<Error,number> => E.async(complete =>
         fs.open(path, 'r', (err: Error, fd: number) => {
             if (err) complete(left(err));
             else complete(right(fd));
@@ -45,7 +45,7 @@ const IOWithEffect = {
 
     readToString: (fd: number): Effect<Error,string> => {
         const buffer = Buffer.alloc(512);
-        return E.async<Error,string>(complete => {
+        return E.async(complete => {
             fs.read(fd, buffer, 0, 512, 0, (err: Error, bytesRead: number) => {
                 if (err) complete(left(err));
                 else complete(right(buffer.toString('utf-8', 0, bytesRead)))
