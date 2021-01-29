@@ -8,7 +8,7 @@ The `Effect` type (inspired by certain Scala libraries) lets us handle async com
 
 E.g.
 
-```
+```typescript
 import * as E from 'ts-effect/src/api';
 import {Effect} from "ts-effect/src/effect";
 import {fold, left, right} from "ts-effect/src/either";
