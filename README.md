@@ -14,14 +14,18 @@ import {Effect} from "ts-effect/src/effect";
 import {fold, left, right} from "ts-effect/src/either";
 
 interface MyData {x: number}
+interface MyError {
+    type: 'BAD_STATUS' | 'BAD_DATA';
+    info: string;
+}
 
-const fetchData = (url: string): Effect<MyData> =>
+const fetchData = (url: string): Effect<MyError,MyData> =>
     E.asyncP(() => fetch(url))
-        .filter(resp => resp.status === 200, resp => Error(`Wrong status: ${resp.status}`))
+        .filter(resp => resp.status === 200, resp => ({type: 'BAD_STATUS', info: `${resp.status}`}))
         .flatMapP(resp => resp.json())
-        .validate<MyData>(json => typeof json.x === 'number' ?
+        .validate<MyError,MyData>(json => typeof json.x === 'number' ?
             right(json) :
-            left(Error(`Failed to deserialise ${json}`))
+            left({type: 'BAD_DATA', info: JSON.stringify(json)})
         );
 
 fetchData(url).run(result => fold(result)(

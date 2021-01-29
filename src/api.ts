@@ -2,8 +2,11 @@ import {Either, fold, left, right} from './either';
 import {Completable, Complete, Effect} from "./effect";
 import {ContinuationStack} from "./continuationStack";
 
-const succeed = <A>(a: A): SucceedEffect<A> => new SucceedEffect<A>(a);
-export class SucceedEffect<A> extends Effect<A> {
+// An Effect that cannot fail
+const succeed = <A>(a: A): SucceedEffect<void,A> => new SucceedEffect<void,A>(a);
+// Sometimes it's useful to give an error type anyway, e.g. when using manage
+const succeedFull = <E,A>(a: A): SucceedEffect<E,A> => new SucceedEffect<E,A>(a);
+export class SucceedEffect<E,A> extends Effect<E,A> {
     value: A;
     constructor(a: A) {
         super('SucceedEffect');
@@ -11,12 +14,12 @@ export class SucceedEffect<A> extends Effect<A> {
     }
 }
 
-const flatMap = <A,B>(effect: Effect<A>, f: (a: A) => Effect<B>): FlatMapEffect<A,B> => new FlatMapEffect<A, B>(effect, f);
-export class FlatMapEffect<A,B> extends Effect<B> {
-    effect: Effect<A>;
-    f: (a: A) => Effect<B>;
+const flatMap = <EA,EB,A,B>(effect: Effect<EA,A>, f: (a: A) => Effect<EB,B>): FlatMapEffect<EA,EB,A,B> => new FlatMapEffect<EA,EB,A,B>(effect, f);
+export class FlatMapEffect<EA,EB,A,B> extends Effect<EB,B> {
+    effect: Effect<EA,A>;
+    f: (a: A) => Effect<EB,B>;
 
-    constructor(e: Effect<A>, f: (a: A) => Effect<B>) {
+    constructor(e: Effect<EA,A>, f: (a: A) => Effect<EB,B>) {
         super('FlatMapEffect');
         this.effect = e;
         this.f = f;
@@ -24,18 +27,18 @@ export class FlatMapEffect<A,B> extends Effect<B> {
 }
 
 // Warning - if the computation is not genuinely async then this is not stack-safe
-const async = <A>(c: Completable<A>): AsyncEffect<A> => new AsyncEffect<A>(c);
-export class AsyncEffect<A> extends Effect<A> {
-    completable: Completable<A>;
+const async = <E,A>(c: Completable<E,A>): AsyncEffect<E,A> => new AsyncEffect<E,A>(c);
+export class AsyncEffect<E,A> extends Effect<E,A> {
+    completable: Completable<E,A>;
 
-    constructor(c: Completable<A>) {
+    constructor(c: Completable<E,A>) {
         super('AsyncEffect');
         this.completable = c;
     }
 }
 
-const sync = <A>(f: () => A): SyncEffect<A> => new SyncEffect<A>(f);
-export class SyncEffect<A> extends Effect<A> {
+const sync = <E,A>(f: () => A): SyncEffect<E,A> => new SyncEffect<E,A>(f);
+export class SyncEffect<E,A> extends Effect<E,A> {
     f: () => A;
 
     constructor(f: () => A) {
@@ -44,20 +47,20 @@ export class SyncEffect<A> extends Effect<A> {
     }
 }
 
-const fail = <A>(error: Error): FailEffect<A> => new FailEffect<A>(error);
-export class FailEffect<A> extends Effect<A> {
-    error: Error;
-    constructor(error: Error) {
+const fail = <E,A>(error: E): FailEffect<E,A> => new FailEffect<E,A>(error);
+export class FailEffect<E,A> extends Effect<E,A> {
+    error: E;
+    constructor(error: E) {
         super('FailEffect');
         this.error = error;
     }
 }
 
-const recover = <A>(effect: Effect<A>, recover: (e: Error) => Effect<A>): RecoverEffect<A> => new RecoverEffect<A>(effect, recover);
-export class RecoverEffect<A> extends Effect<A> {
-    effect: Effect<A>;
-    r: (e: Error) => Effect<A>;
-    constructor(effect: Effect<A>, recover: (e: Error) => Effect<A>) {
+const recover = <E1,E2,A>(effect: Effect<E1,A>, recover: (e: E1) => Effect<E2,A>): RecoverEffect<E1,E2,A> => new RecoverEffect<E1,E2,A>(effect, recover);
+export class RecoverEffect<E1,E2,A> extends Effect<E2,A> {
+    effect: Effect<E1,A>;
+    r: (e: E1) => Effect<E2,A>;
+    constructor(effect: Effect<E1,A>, recover: (e: E1) => Effect<E2,A>) {
         super('RecoverEffect');
         this.effect = effect;
         this.r = recover;
@@ -65,7 +68,7 @@ export class RecoverEffect<A> extends Effect<A> {
 }
 
 // Run the program described by the Effect. We (mostly) ensure stack-safety by pushing continuations to a stack inside a loop
-const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<A>, stack: ContinuationStack<A>): void => {
+const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: ContinuationStack<E,A>): void => {
     let current: Effect<any,any> | null = effect;
 
     while (current !== null) {
@@ -86,7 +89,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<A>, stack: Continu
                     break;
                 }
                 case 'SyncEffect': {
-                    const syncEffect = e as SyncEffect<any>;
+                    const syncEffect = e as SyncEffect<any,any>;
                     const next = stack.nextSuccess();
                     const result = syncEffect.f();
                     if (next) {
@@ -99,15 +102,15 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<A>, stack: Continu
                     break;
                 }
                 case 'AsyncEffect': {
-                    const asyncEffect = e as AsyncEffect<any>;
+                    const asyncEffect = e as AsyncEffect<any,any>;
 
                     // If the effect is not truly async then this is not stack-safe
-                    asyncEffect.completable((result: Either<Error, A>) => {
+                    asyncEffect.completable((result: Either<any,any>) => {
                         fold(result)(
                             a => {
                                 const next = stack.nextSuccess();
                                 if (next) {
-                                    run(next.f(a) as Effect<A>)(complete, stack);
+                                    run(next.f(a) as Effect<any,any>)(complete, stack);
                                 } else {
                                     complete(right(a));
                                 }
@@ -115,7 +118,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<A>, stack: Continu
                             err => {
                                 const next = stack.nextFailure();
                                 if (next) {
-                                    run(next.f(err) as Effect<A>)(complete, stack);
+                                    run(next.f(err) as Effect<any,any>)(complete, stack);
                                 } else {
                                     complete(left(err));
                                 }
@@ -128,14 +131,14 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<A>, stack: Continu
                     break;
                 }
                 case 'FlatMapEffect': {
-                    const flatMapEffect = e as FlatMapEffect<any, any>;
+                    const flatMapEffect = e as FlatMapEffect<any,any,any,any>;
                     current = flatMapEffect.effect;
                     stack.pushSuccess(flatMapEffect.f);
 
                     break;
                 }
                 case 'FailEffect': {
-                    const failEffect = e as FailEffect<any>;
+                    const failEffect = e as FailEffect<any,any>;
                     const next = stack.nextFailure();
                     if (next) {
                         current = next.f(failEffect.error);
@@ -147,7 +150,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<A>, stack: Continu
                     break;
                 }
                 case 'RecoverEffect': {
-                    const recoverEffect = e as RecoverEffect<any>;
+                    const recoverEffect = e as RecoverEffect<any,any,any>;
                     current = recoverEffect.effect;
                     stack.pushFailure(recoverEffect.r);
 
@@ -163,7 +166,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<A>, stack: Continu
 };
 
 // Create an AsyncEffect from a Promise
-const asyncP = <A>(lazy: () => Promise<A>): Effect<A> => async((complete: Complete<A>) =>
+const asyncP = <E,A>(lazy: () => Promise<A>): Effect<E,A> => async((complete: Complete<E,A>) =>
     lazy()
         .then(a => complete(right(a)))
         .catch(err => left(err))
@@ -176,7 +179,7 @@ const asyncP = <A>(lazy: () => Promise<A>): Effect<A> => async((complete: Comple
  * @param release   A side-effecting function to release the resource, guaranteed to be run regardless of success
  * @param f         A function that receives the resource and produces an Effect
  */
-const manage = <A,B>(acquire: Effect<A>, release: (a: A) => void, f: (a: A) => Effect<B>): Effect<B> =>
+const manage = <E,A,B>(acquire: Effect<E,A>, release: (a: A) => void, f: (a: A) => Effect<E,B>): Effect<E,B> =>
     acquire.flatMap(a => {
         try {
             return f(a)
@@ -196,12 +199,12 @@ const manage = <A,B>(acquire: Effect<A>, release: (a: A) => void, f: (a: A) => E
     });
 
 // Each chain function type overload here ensures type safety for the caller
-function chain<A,B>(ea: Effect<A>, fs: [(a: A) => Effect<B>]): Effect<B>;
-function chain<A,B,C>(ea: Effect<A>, fs: [(a: A) => Effect<B>, (b: B) => Effect<C>]): Effect<C>;
-function chain<A,B,C,D>(ea: Effect<A>, fs: [(a: A) => Effect<B>, (b: B) => Effect<C>, (c: C) => Effect<D>]): Effect<D>;
-function chain<A,B,C,D,E>(ea: Effect<A>, fs: [(a: A) => Effect<B>, (b: B) => Effect<C>, (c: C) => Effect<D>, (d: D) => Effect<E>]): Effect<E>;
-function chain<A,B,C,D,E,F>(ea: Effect<A>, fs: [(a: A) => Effect<B>, (b: B) => Effect<C>, (c: C) => Effect<D>, (d: D) => Effect<E>, (e: E) => Effect<F>]): Effect<F>;
-function chain<A>(ea: Effect<A>, fs: ((x: any) => Effect<any>)[]): Effect<any> {
+function chain<E,A,B>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>]): Effect<E,B>;
+function chain<E,A,B,C>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>, (b: B) => Effect<E,C>]): Effect<E,C>;
+function chain<E,A,B,C,D>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>, (b: B) => Effect<E,C>, (c: C) => Effect<E,D>]): Effect<E,D>;
+function chain<E,A,B,C,D,EE>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>, (b: B) => Effect<E,C>, (c: C) => Effect<E,D>, (d: D) => Effect<E,EE>]): Effect<E,EE>;
+function chain<E,A,B,C,D,EE,F>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>, (b: B) => Effect<E,C>, (c: C) => Effect<E,D>, (d: D) => Effect<E,E>, (e: E) => Effect<E,F>]): Effect<E,F>;
+function chain<E,A>(ea: Effect<E,A>, fs: ((x: any) => Effect<E,any>)[]): Effect<E,any> {
     return fs.reduce(
         (e, f) => e.flatMap(f),
         ea
@@ -209,7 +212,7 @@ function chain<A>(ea: Effect<A>, fs: ((x: any) => Effect<any>)[]): Effect<any> {
 }
 
 // type hacking to make `allG` accept a generic tuple type
-type ExtractType<T> = { [K in keyof T]: T[K] extends Effect<infer V> ? V : never };
+type ExtractType<E,T> = { [K in keyof T]: T[K] extends Effect<E,infer V> ? V : never };
 
 /**
  * Given an array of Effects, returns an Effect whose result is an array of the resulting values.
@@ -217,18 +220,20 @@ type ExtractType<T> = { [K in keyof T]: T[K] extends Effect<infer V> ? V : never
  *
  * Note - the compiler needs help with the type parameter here if you wish to handle the result as a tuple rather than an array, e.g.
  *   `allG<[Effect<number>,Effect<string>]>([E.succeed(1), E.succeed('a')]).map(([n,s]) => ...)`
+ *
+ * TODO - should error type also be heterogeneous?
  */
-const allG = <T extends Effect<any>[]>(
+const allG = <E,T extends Effect<E,any>[]>(
     arr: T
-): Effect<ExtractType<T>> => {
-    return async((completeAll: Complete<ExtractType<T>>) => {
+): Effect<E,ExtractType<E,T>> => {
+    return async((completeAll: Complete<E,ExtractType<E,T>>) => {
         let hasFailed = false;
         const buffer: any[] = [];
         arr.forEach(e => e.run(result => fold(result)(
             a => {
                 if (!hasFailed) {
                     buffer.push(a);
-                    if (buffer.length === arr.length) completeAll(right(buffer as ExtractType<T>));
+                    if (buffer.length === arr.length) completeAll(right(buffer as ExtractType<E,T>));
                 }
             },
             err => {
@@ -240,10 +245,11 @@ const allG = <T extends Effect<any>[]>(
     });
 };
 
-const all = <A>(arr: Effect<A>[]): Effect<A[]> => allG(arr);
+const all = <E,A>(arr: Effect<E,A>[]): Effect<E,A[]> => allG(arr);
 
 export {
     succeed,
+    succeedFull,
     flatMap,
     async,
     sync,

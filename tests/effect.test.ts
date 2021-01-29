@@ -3,10 +3,10 @@ import {Effect} from '../src/effect';
 import {left, right} from "../src/Either";
 
 describe('Effect', () => {
-    const effect: Effect<number> = E.succeed(1);
+    const effect: Effect<void,number> = E.succeed(1);
 
     const err = new Error('failed1');
-    const fails: Effect<number> = E.fail<number>(err);
+    const fails: Effect<Error,number> = E.fail(err);
 
     it('run', () => {
         const complete = jest.fn();
@@ -115,7 +115,7 @@ describe('Effect', () => {
     });
 
     it('all with fail', async () => {
-        const p = E.all([effect, fails])
+        const p = E.all([E.succeedFull<Error,number>(1), fails])
             .map((arr: number[]) => arr.reduce((x,y) => x+y))
             .runP();
 
@@ -123,7 +123,7 @@ describe('Effect', () => {
     });
 
     it('allG', async () => {
-        const p = E.allG<[Effect<number>,Effect<string>]>([E.succeed(1), E.succeed('a')])
+        const p = E.allG<void,[Effect<void,number>,Effect<void,string>]>([E.succeed(1), E.succeed('a')])
             .map(([n,s]: [number,string]) => `${n},${s}`)
             .runP();
 
@@ -131,12 +131,12 @@ describe('Effect', () => {
     });
 
     it('manage success', async () => {
-        const acquire: Effect<number> = E.succeed(1);
+        const acquire: Effect<void,number> = E.succeed(1);
         const release = jest.fn().mockImplementation(() => { console.log('release') });
 
-        const generator = jest.fn().mockImplementation((a: number): Effect<string> => E.succeed(`${a}`));
+        const generator = jest.fn().mockImplementation((a: number): Effect<void,string> => E.succeed(`${a}`));
 
-        const p = E.manage<number,string>(acquire, release, generator).runP();
+        const p = E.manage<void,number,string>(acquire, release, generator).runP();
 
         await expect(p).resolves.toEqual('1');
         expect(release).toHaveBeenCalledTimes(1);
@@ -144,20 +144,20 @@ describe('Effect', () => {
     });
 
     it('manage failure in effect generator', async () => {
-        const acquire: Effect<number> = E.succeed(1);
+        const acquire: Effect<void,number> = E.succeed(1);
         const release = jest.fn().mockImplementation(() => { console.log('release') });
 
-        const p = E.manage<number,string>(acquire,release, a => { throw err }).runP();
+        const p = E.manage<void,number,string>(acquire,release, a => { throw err }).runP();
 
         await expect(p).rejects.toBe(err);
         expect(release).toHaveBeenCalledTimes(1);
     });
 
     it('manage failure in effect', async () => {
-        const acquire: Effect<number> = E.succeed(1);
+        const acquire: Effect<Error,number> = E.succeedFull<Error,number>(1);
         const release = jest.fn().mockImplementation(() => { console.log('release') });
 
-        const p = E.manage<number,number>(acquire,release, a => fails).runP();
+        const p = E.manage<Error,number,number>(acquire,release, a => fails).runP();
 
         await expect(p).rejects.toBe(err);
         expect(release).toHaveBeenCalledTimes(1);
