@@ -5,6 +5,7 @@ An experiment to see if I can improve on `Promise` + `await` for async tasks and
 I'm not convinced I've achieved this.
 
 The `Effect` type (inspired by certain Scala libraries) lets us handle async computations as values, and chain operations.
+Error types are encoded in the `Effect` type, as an alternative to exceptions/rejections.
 
 E.g.
 
@@ -14,18 +15,26 @@ import {Effect} from "ts-effect/src/effect";
 import {fold, left, right} from "ts-effect/src/either";
 
 interface MyData {x: number}
-interface MyError {
-    type: 'BAD_STATUS' | 'BAD_DATA';
+
+type ErrorType = 'FETCH_ERROR' | 'PARSE_ERROR' | 'BAD_STATUS' | 'BAD_DATA';
+interface FetchError {
+    type: ErrorType;
     info: string;
 }
+const error = (type: ErrorType, info: string): FetchError => ({type, info});
 
-const fetchData = (url: string): Effect<MyError,MyData> =>
+const fetchData = (url: string): Effect<FetchError,MyData> =>
     E.asyncP(() => fetch(url))
-        .filter(resp => resp.status === 200, resp => ({type: 'BAD_STATUS', info: `${resp.status}`}))
-        .flatMapP(resp => resp.json())
-        .validate<MyError,MyData>(json => typeof json.x === 'number' ?
+        .mapError((err: unknown) => error('FETCH_ERROR',`${err}`))
+        .filter(
+            resp => resp.status === 200, 
+            resp => error('BAD_STATUS',`${resp.status}`))
+        .flatMapP(
+            resp => resp.json(), 
+            err => error('PARSE_ERROR',`${err}`))
+        .validate<MyData>(json => typeof json.x === 'number' ?
             right(json) :
-            left({type: 'BAD_DATA', info: JSON.stringify(json)})
+            left(error('BAD_DATA', JSON.stringify(json)))
         );
 
 fetchData(url).run(result => fold(result)(

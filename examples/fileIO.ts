@@ -74,7 +74,7 @@ const withEffect = (path: string): Promise<Model> =>
         IOWithEffect.readToString
     )
         .map((raw: string) => JSON.parse(raw))
-        .validate<Error,Model>((json: any) => validateData(json) ?
+        .validate<Model>((json: any) => validateData(json) ?
             right(json) :
             left(Error(`Failed to parse: ${json}`))
         )

@@ -40,7 +40,7 @@ const withoutEffect = (body: string): Promise<Response> => {
         });
 };
 
-type ErrorType = 'NAN' | 'BAD_RESPONSE' | 'INVALID_DATA';
+type ErrorType = 'NAN' | 'FETCH_ERROR' | 'PARSE_ERROR' | 'BAD_RESPONSE' | 'INVALID_DATA';
 
 interface MyError {
     type: ErrorType;
@@ -50,20 +50,20 @@ interface MyError {
 const error = (type: ErrorType, message: string): MyError => ({type, message});
 
 const withEffect = (body: string): Promise<Response> =>
-    E.succeed(parseInt(body))
+    E.succeed(parseInt(body)).lift<MyError>()
         .filter(n => !isNaN(n), n => error('NAN', `${n} is NaN`))
-        .flatMapP(makeRequest)
+        .flatMapP(makeRequest, err => error('FETCH_ERROR', `${err}`))
         .filter(
             resp => resp.status === 200,
             resp => error('BAD_RESPONSE', `Wrong status: ${resp.status}`)
         )
-        .flatMapP(resp => resp.json())
-        .validate<MyError,Response>(json => typeof json.x === 'string' ?
+        .flatMapP(resp => resp.json(), err => error('PARSE_ERROR', `${err}`))
+        .validate<Response>(json => typeof json.x === 'string' ?
             right(new Response(200, `it says ${json.x}`)) :
             left(error('INVALID_DATA', 'Failed to parse data'))
         )
         .recover(err => {
-            console.error(`Failed with: ${err.message}`);
+            console.error(`Failed with ${err.type}: ${err.message}`);
             return err.type === 'NAN' ? InvalidRequest : ServerError;
         })
         .runP();

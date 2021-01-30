@@ -9,24 +9,30 @@ import * as E from '../src/api';
 
 type Result = {a: number, c: string};
 
-const getDependencyA = (): Promise<number> => Promise.resolve(1);
-const getDependencyB = (n: number): Promise<number> => Promise.resolve(n + 1);
-const fetch = (n: number): Promise<string> => Promise.resolve(`${n}`);
-
 const withoutEffect = async (): Promise<Result> => {
-    const a = await getDependencyA();
+    const getDependencyA: Promise<number> = Promise.resolve(1);
+    const getDependencyB = (n: number): Promise<number> => Promise.resolve(n + 1);
+    const fetch = (n: number): Promise<string> => Promise.resolve(`${n}`);
+
+    const a = await getDependencyA;
     const b = await getDependencyB(a);
     return fetch(b)
         .then(c => ({a,c}))
 };
 
-const withEffect = async (): Promise<Result> =>
-    E.asyncP(getDependencyA)
-        .flatZipP(getDependencyB)
-        .flatZipWithP(
-            ([a,b]) => fetch(b),
-            ([a,b], c) => ({a,c}))
+const withEffect = async (): Promise<Result> => {
+    const getDependencyA = E.succeed(1);
+    const getDependencyB = (n: number) => E.succeed(n + 1);
+    const fetch = (n: number) => E.succeed(`${n}`);
+
+    return getDependencyA
+        .flatZip(getDependencyB)
+        .flatZipWith(
+            ([a, b]) => fetch(b),
+            ([a, b], c) => ({a, c})
+        )
         .runP();
+};
 
 const runExample = (f: () => Promise<Result>, name: string) => f()
     .then(r => console.log(`reuse ${name} success: ${JSON.stringify(r)}`))
