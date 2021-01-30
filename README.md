@@ -5,6 +5,7 @@ An experiment to see if I can improve on `Promise` + `await` for async tasks and
 I'm not convinced I've achieved this.
 
 The `Effect` type (inspired by certain Scala libraries) lets us handle async computations as values, and chain operations.
+Error types are encoded in the `Effect` type, as an alternative to exceptions/rejections.
 
 E.g.
 
@@ -24,7 +25,7 @@ const error = (type: ErrorType, info: string): FetchError => ({type, info});
 
 const fetchData = (url: string): Effect<FetchError,MyData> =>
     E.asyncP(() => fetch(url))
-        .mapError<FetchError>((err: unknown) => error('FETCH_ERROR',`${err}`))
+        .mapError((err: unknown) => error('FETCH_ERROR',`${err}`))
         .filter(
             resp => resp.status === 200, 
             resp => error('BAD_STATUS',`${resp.status}`))

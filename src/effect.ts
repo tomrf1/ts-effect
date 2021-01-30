@@ -22,11 +22,18 @@ type EffectType =
     'AsyncEffect' |
     'SyncEffect' |
     'FailEffect' |
-    'RecoverEffect';
+    'RecoverEffect' |
+    'CatchAllEffect';
 
 /**
- * Models an effectful program.
- * Effects can be composed using the methods on this class
+ * Models an effectful program that may succeed or fail.
+ * A is the success value type.
+ * E is the error value type.
+ *
+ * Effects can be composed using the methods on this class.
+ *
+ * Exceptions are not caught when the Effect is run.
+ * However, Promise.catch is called when flatMapP/flatZipP/flatZipWithP are used.
  */
 export abstract class Effect<E,A> {
     type: EffectType;
@@ -35,12 +42,12 @@ export abstract class Effect<E,A> {
         this.type = type;
     }
 
-    // Run the Effect with the given completion callback. Catches exceptions
+    // Run the Effect with the given completion callback. Does not catch exceptions
     run(complete: Complete<E,A>): void {
         run(this)(complete, new ContinuationStack<E,A>())
     }
 
-    // Run the Effect as a Promise
+    // Run the Effect as a Promise. If an exception is thrown while running the Effect then the Promise will reject
     runP(): Promise<A> {
         return new Promise((resolve, reject) => {
             const complete = (result: Either<E, A>) => fold(result)(
@@ -61,7 +68,7 @@ export abstract class Effect<E,A> {
         return flatMap(this, f);
     }
 
-    // Convenient alternative to flatMap for when f returns a promise
+    // Convenient alternative to flatMap for when f returns a promise. To avoid unknown error types, Promise rejections must be handled by e
     flatMapP<B>(f: (a: A) => Promise<B>, e: (err: unknown) => E): FlatMapEffect<E,A,B> {
         const continuation = (a: A) => async<E,B>(complete =>
             f(a)

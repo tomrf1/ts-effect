@@ -30,9 +30,11 @@ describe('Effect', () => {
     });
 
     it('flatMap with failure (run)', async () => {
+        // Not so much a test as a demonstration of how `run` does not handle exceptions by design
         const complete = jest.fn();
-        effect.flatMap<number>(x => {throw err}).map(n => n *2).run(complete);
-        expect(complete).toBeCalledWith(left(err));
+        expect(
+            () => effect.flatMap<number>(x => {throw err}).map(n => n *2).run(complete)
+        ).toThrowError(err);
     });
 
     it('flatMap with failure (runP)', async () => {

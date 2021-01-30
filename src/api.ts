@@ -72,100 +72,100 @@ export class RecoverEffect<E1,E2,A> extends Effect<E2,A> {
     }
 }
 
-// Run the program described by the Effect. We (mostly) ensure stack-safety by pushing continuations to a stack inside a loop
+/**
+ * Run the program described by the Effect.
+ * We (mostly) ensure stack-safety by pushing continuations to a stack inside a loop.
+ * Does not catch exceptions by design.
+ */
 const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: ContinuationStack<E,A>): void => {
     let current: Effect<any,any> | null = effect;
 
     while (current !== null) {
         const e: Effect<any,any> = current;
 
-        try {
-            switch (e.type) {
-                case 'SucceedEffect': {
-                    const succeedEffect = e as SucceedEffect<any,any>;
-                    const next = stack.nextSuccess();
-                    if (next) {
-                        current = next.f(succeedEffect.value)
-                    } else {
-                        current = null;
-                        complete(right(succeedEffect.value))
-                    }
-
-                    break;
-                }
-                case 'SyncEffect': {
-                    const syncEffect = e as SyncEffect<any,any>;
-                    const next = stack.nextSuccess();
-                    const result = syncEffect.f();
-                    if (next) {
-                        current = next.f(result)
-                    } else {
-                        current = null;
-                        complete(right(result))
-                    }
-
-                    break;
-                }
-                case 'AsyncEffect': {
-                    const asyncEffect = e as AsyncEffect<any,any>;
-
-                    // If the effect is not truly async then this is not stack-safe
-                    asyncEffect.completable((result: Either<any,any>) => {
-                        fold(result)(
-                            a => {
-                                const next = stack.nextSuccess();
-                                if (next) {
-                                    run(next.f(a) as Effect<any,any>)(complete, stack);
-                                } else {
-                                    complete(right(a));
-                                }
-                            },
-                            err => {
-                                const next = stack.nextFailure();
-                                if (next) {
-                                    run(next.f(err) as Effect<any,any>)(complete, stack);
-                                } else {
-                                    complete(left(err));
-                                }
-                            }
-                        )
-                    });
-
+        switch (e.type) {
+            case 'SucceedEffect': {
+                const succeedEffect = e as SucceedEffect<any,any>;
+                const next = stack.nextSuccess();
+                if (next) {
+                    current = next.f(succeedEffect.value)
+                } else {
                     current = null;
-
-                    break;
+                    complete(right(succeedEffect.value))
                 }
-                case 'FlatMapEffect': {
-                    const flatMapEffect = e as FlatMapEffect<any,any,any>;
-                    current = flatMapEffect.effect;
-                    stack.pushSuccess(flatMapEffect.f);
 
-                    break;
-                }
-                case 'FailEffect': {
-                    const failEffect = e as FailEffect<any,any>;
-                    const next = stack.nextFailure();
-                    if (next) {
-                        current = next.f(failEffect.error);
-                    } else {
-                        current = null;
-                        complete(left(failEffect.error));
-                    }
-
-                    break;
-                }
-                case 'RecoverEffect': {
-                    const recoverEffect = e as RecoverEffect<any,any,any>;
-                    current = recoverEffect.effect;
-                    stack.pushFailure(recoverEffect.r);
-
-                    break;
-                }
-                default:
-                    current = fail(Error(`Unknown Effect type found by interpreter: ${e.type}`));
+                break;
             }
-        } catch (err) {
-            current = fail(err);
+            case 'SyncEffect': {
+                const syncEffect = e as SyncEffect<any,any>;
+                const next = stack.nextSuccess();
+                const result = syncEffect.f();
+                if (next) {
+                    current = next.f(result)
+                } else {
+                    current = null;
+                    complete(right(result))
+                }
+
+                break;
+            }
+            case 'AsyncEffect': {
+                const asyncEffect = e as AsyncEffect<any,any>;
+
+                // If the effect is not truly async then this is not stack-safe
+                asyncEffect.completable((result: Either<any,any>) => {
+                    fold(result)(
+                        a => {
+                            const next = stack.nextSuccess();
+                            if (next) {
+                                run(next.f(a) as Effect<any,any>)(complete, stack);
+                            } else {
+                                complete(right(a));
+                            }
+                        },
+                        err => {
+                            const next = stack.nextFailure();
+                            if (next) {
+                                run(next.f(err) as Effect<any,any>)(complete, stack);
+                            } else {
+                                complete(left(err));
+                            }
+                        }
+                    )
+                });
+
+                current = null;
+
+                break;
+            }
+            case 'FlatMapEffect': {
+                const flatMapEffect = e as FlatMapEffect<any,any,any>;
+                current = flatMapEffect.effect;
+                stack.pushSuccess(flatMapEffect.f);
+
+                break;
+            }
+            case 'FailEffect': {
+                const failEffect = e as FailEffect<any,any>;
+                const next = stack.nextFailure();
+                if (next) {
+                    current = next.f(failEffect.error);
+                } else {
+                    current = null;
+                    complete(left(failEffect.error));
+                }
+
+                break;
+            }
+            case 'RecoverEffect': {
+                const recoverEffect = e as RecoverEffect<any,any,any>;
+                current = recoverEffect.effect;
+                stack.pushFailure(recoverEffect.r);
+
+                break;
+            }
+            default:
+                throw Error(`Unknown Effect type found by interpreter: ${e.type}`);
         }
     }
 };
