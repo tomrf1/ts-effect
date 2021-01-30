@@ -27,14 +27,14 @@ export const withoutEffect = (): Promise<number> => {
 };
 
 // Is stack-safe:
-const incrementEffect = (e: Effect<void,number>): Effect<void,number> => e.flatMap(n => succeed(n+1));
+const incrementEffect = (e: Effect<never,number>): Effect<never,number> => e.flatMap(n => succeed(n+1));
 // Is stack-safe:
-// const incrementEffect = (e: Effect<void,number>): Effect<void,number> => e.flatMapP(n => Promise.resolve(n+1));
+// const incrementEffect = (e: Effect<any,number>): Effect<any,number> => e.flatMapP(n => Promise.resolve(n+1), err => err);
 // Is not stack-safe:
-// const incrementEffect = (e: Effect<void,number>): Effect<void,number> => e.flatMap(n => async(c => c(right(n+1))));
+// const incrementEffect = (e: Effect<never,number>): Effect<never,number> => e.flatMap(n => async(c => c(right(n+1))));
 
 export const withEffect = (): Promise<number> => {
-    let e: Effect<void,number> = E.succeed(0);
+    let e: Effect<never,number> = E.succeed(0);
     for (let i = 0; i < 10000; i++) {
         e = incrementEffect(e);
     }

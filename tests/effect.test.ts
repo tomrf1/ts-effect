@@ -3,7 +3,7 @@ import {Effect} from '../src/effect';
 import {left, right} from "../src/Either";
 
 describe('Effect', () => {
-    const effect: Effect<void,number> = E.succeed(1);
+    const effect: Effect<Error,number> = E.succeed(1).lift<Error>();
 
     const err = new Error('failed1');
     const fails: Effect<Error,number> = E.fail(err);
@@ -25,7 +25,7 @@ describe('Effect', () => {
     });
 
     it('flatMap', async () => {
-        const p = effect.flatMap(x => E.succeed(x * 2)).runP();
+        const p = effect.flatMap(x => E.succeed(x * 2).lift<Error>()).runP();
         await expect(p).resolves.toEqual(2);
     });
 
@@ -41,27 +41,27 @@ describe('Effect', () => {
     });
 
     it('flatMapP', async () => {
-        const p = effect.flatMapP(x => Promise.resolve(x*2)).runP();
+        const p = effect.flatMapP(x => Promise.resolve(x*2), err => new Error(`${err}`)).runP();
         await expect(p).resolves.toEqual(2);
     });
 
     it('flatZip', async () => {
-        const p = effect.flatZip(x => E.succeed(x*2)).runP();
+        const p = effect.flatZip(x => E.succeed(x*2).lift<Error>()).runP();
         await expect(p).resolves.toEqual([1,2]);
     });
 
     it('flatZipWith', async () => {
-        const p = effect.flatZipWith(x => E.succeed(x*2), (x, y) => ({x,y})).runP();
+        const p = effect.flatZipWith(x => E.succeed(x*2).lift<Error>(), (x, y) => ({x,y})).runP();
         await expect(p).resolves.toEqual({x: 1, y: 2});
     });
 
     it('flatZipP', async () => {
-        const p = effect.flatZipP(x => Promise.resolve(x*2)).runP();
+        const p = effect.flatZipP(x => Promise.resolve(x*2), err => new Error(`${err}`)).runP();
         await expect(p).resolves.toEqual([1,2]);
     });
 
     it('flatZipWithP', async () => {
-        const p = effect.flatZipWithP(x => Promise.resolve(x*2), (x,y) => ({x,y})).runP();
+        const p = effect.flatZipWithP(x => Promise.resolve(x*2), (x,y) => ({x,y}), err => new Error(`${err}`)).runP();
         await expect(p).resolves.toEqual({x: 1, y: 2});
     });
 
@@ -102,7 +102,7 @@ describe('Effect', () => {
 
     it('recoverWith', async () => {
         expect.assertions(1);
-        const p = fails.recoverWith(e => E.succeed(2)).runP();
+        const p = fails.recoverWith(e => E.succeed(2).lift<Error>()).runP();
         await expect(p).resolves.toEqual(2);
     });
 
@@ -115,7 +115,7 @@ describe('Effect', () => {
     });
 
     it('all with fail', async () => {
-        const p = E.all([E.succeedFull<Error,number>(1), fails])
+        const p = E.all([E.succeed(1).lift<Error>(), fails])
             .map((arr: number[]) => arr.reduce((x,y) => x+y))
             .runP();
 
@@ -123,7 +123,7 @@ describe('Effect', () => {
     });
 
     it('allG', async () => {
-        const p = E.allG<void,[Effect<void,number>,Effect<void,string>]>([E.succeed(1), E.succeed('a')])
+        const p = E.allG<never,[Effect<never,number>,Effect<never,string>]>([E.succeed(1), E.succeed('a')])
             .map(([n,s]: [number,string]) => `${n},${s}`)
             .runP();
 
@@ -131,12 +131,12 @@ describe('Effect', () => {
     });
 
     it('manage success', async () => {
-        const acquire: Effect<void,number> = E.succeed(1);
+        const acquire: Effect<never,number> = E.succeed(1);
         const release = jest.fn().mockImplementation(() => { console.log('release') });
 
-        const generator = jest.fn().mockImplementation((a: number): Effect<void,string> => E.succeed(`${a}`));
+        const generator = jest.fn().mockImplementation((a: number): Effect<never,string> => E.succeed(`${a}`));
 
-        const p = E.manage<void,number,string>(acquire, release, generator).runP();
+        const p = E.manage<never,number,string>(acquire, release, generator).runP();
 
         await expect(p).resolves.toEqual('1');
         expect(release).toHaveBeenCalledTimes(1);
@@ -144,17 +144,17 @@ describe('Effect', () => {
     });
 
     it('manage failure in effect generator', async () => {
-        const acquire: Effect<void,number> = E.succeed(1);
+        const acquire: Effect<never,number> = E.succeed(1);
         const release = jest.fn().mockImplementation(() => { console.log('release') });
 
-        const p = E.manage<void,number,string>(acquire,release, a => { throw err }).runP();
+        const p = E.manage<never,number,string>(acquire,release, a => { throw err }).runP();
 
         await expect(p).rejects.toBe(err);
         expect(release).toHaveBeenCalledTimes(1);
     });
 
     it('manage failure in effect', async () => {
-        const acquire: Effect<Error,number> = E.succeedFull<Error,number>(1);
+        const acquire: Effect<Error,number> = E.succeed(1).lift<Error>();
         const release = jest.fn().mockImplementation(() => { console.log('release') });
 
         const p = E.manage<Error,number,number>(acquire,release, a => fails).runP();

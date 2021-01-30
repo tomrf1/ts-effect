@@ -7,7 +7,7 @@ import {
     recover,
     RecoverEffect,
     run,
-    succeedFull
+    succeed,
 } from "./api";
 import {ContinuationStack} from "./continuationStack";
 
@@ -52,75 +52,75 @@ export abstract class Effect<E,A> {
     }
 
     // Apply f to the result of the Effect
-    map<B>(f: (a: A) => B): FlatMapEffect<E,E,A,B> {
-        return flatMap(this, (a: A) => succeedFull<E,B>(f(a)))
+    map<B>(f: (a: A) => B): FlatMapEffect<E,A,B> {
+        return flatMap(this, (a: A) => succeed(f(a)).lift<E>())
     }
 
     // Apply f to the result of the Effect and flatten the nested Effects
-    flatMap<B>(f: (a: A) => Effect<E,B>): FlatMapEffect<E,E,A,B> {
+    flatMap<B>(f: (a: A) => Effect<E,B>): FlatMapEffect<E,A,B> {
         return flatMap(this, f);
     }
 
     // Convenient alternative to flatMap for when f returns a promise
-    flatMapP<B>(f: (a: A) => Promise<B>): FlatMapEffect<E,E,A,B> {
+    flatMapP<B>(f: (a: A) => Promise<B>, e: (err: unknown) => E): FlatMapEffect<E,A,B> {
         const continuation = (a: A) => async<E,B>(complete =>
             f(a)
                 .then(b => complete(right(b)))
-                .catch(err => complete(left(err)))
+                .catch((err: unknown) => complete(left(e(err))))
         );
 
         return flatMap(this, continuation)
     }
 
     // Like flatMap, but combines the two Effect results into a tuple
-    flatZip<B>(f: (a: A) => Effect<E,B>): FlatMapEffect<E,E,A, [A,B]> {
-        return flatMap<E,E,A, [A,B]>(this, (a: A) =>
+    flatZip<B>(f: (a: A) => Effect<E,B>): FlatMapEffect<E,A, [A,B]> {
+        return flatMap<E,A, [A,B]>(this, (a: A) =>
             f(a).map(b => ([a,b]))
         )
     }
 
     // Like flatMap, but combines the two Effect results using the given function
-    flatZipWith<B,Z>(f: (a: A) => Effect<E,B>, z: (a: A, b: B) => Z): FlatMapEffect<E,E,A,Z> {
-        return flatMap<E,E,A, Z>(this, (a: A) =>
+    flatZipWith<B,Z>(f: (a: A) => Effect<E,B>, z: (a: A, b: B) => Z): FlatMapEffect<E,A,Z> {
+        return flatMap<E,A, Z>(this, (a: A) =>
             f(a).map(b => z(a,b))
         )
     }
 
     // Like flatMapP, but combines the two Effect results into a tuple
-    flatZipP<B>(f: (a: A) => Promise<B>): FlatMapEffect<E,E,A, [A,B]> {
+    flatZipP<B>(f: (a: A) => Promise<B>, e: (err: unknown) => E): FlatMapEffect<E,A, [A,B]> {
         const continuation = (a: A) => async<E,[A,B]>(complete =>
             f(a)
                 .then(b => complete(right([a,b])))
-                .catch(err => complete(left(err)))
+                .catch((err: unknown) => complete(left(e(err))))
         );
 
         return flatMap(this, continuation)
     }
 
     // Like flatMapP, but combines the two Effect results using the given function
-    flatZipWithP<B,Z>(f: (a: A) => Promise<B>, z: (a: A, b: B) => Z): FlatMapEffect<E,E,A, Z> {
+    flatZipWithP<B,Z>(f: (a: A) => Promise<B>, z: (a: A, b: B) => Z, e: (err: unknown) => E): FlatMapEffect<E,A, Z> {
         const continuation = (a: A) => async<E,Z>(complete =>
             f(a)
                 .then(b => complete(right(z(a,b))))
-                .catch(err => complete(left(err)))
+                .catch((err: unknown) => complete(left(e(err))))
         );
 
         return flatMap(this, continuation)
     }
 
     // Apply predicate to the result of the Effect and either produce an error using e, or leave the value unchanged
-    filter(p: (a: A) => boolean, e: (a: A) => E): FlatMapEffect<E,E,A,A> {
+    filter(p: (a: A) => boolean, e: (a: A) => E): FlatMapEffect<E,A,A> {
         return flatMap(this, (a: A) => {
-            if (p(a)) return succeedFull(a);
+            if (p(a)) return succeed(a).lift<E>();
             else return fail(e(a));
         })
     }
 
     // Apply f to the result of the Effect and either produce an error or a value of type B
-    validate<E2,B>(f: (a: A) => Either<E2,B>): FlatMapEffect<E,E2,A,B> {
+    validate<B>(f: (a: A) => Either<E,B>): FlatMapEffect<E,A,B> {
         return flatMap(this, (a: A) =>
-            fold<E2,B,Effect<E2,B>>(f(a))(
-                b => succeedFull(b),
+            fold<E,B,Effect<E,B>>(f(a))(
+                b => succeed(b).lift<E>(),
                 err => fail(err)
             )
         );
@@ -133,11 +133,11 @@ export abstract class Effect<E,A> {
 
     // If the Effect fails then apply f to the error to produce a value of type A
     recover(f: (e: E) => A): RecoverEffect<E,E,A> {
-        return recover(this, e => succeedFull(f(e)));
+        return recover(this, e => succeed(f(e)).lift<E>());
     }
 
     // If the Effect fails then apply f to the error to produce an Effect of type A
-    recoverWith<E2>(f: (e: E) => Effect<E2,A>): RecoverEffect<E,E2,A> {
+    recoverWith(f: (e: E) => Effect<E,A>): RecoverEffect<E,E,A> {
         return recover(this, f);
     }
 }

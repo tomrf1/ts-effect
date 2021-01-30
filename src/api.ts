@@ -3,23 +3,28 @@ import {Completable, Complete, Effect} from "./effect";
 import {ContinuationStack} from "./continuationStack";
 
 // An Effect that cannot fail
-const succeed = <A>(a: A): SucceedEffect<void,A> => new SucceedEffect<void,A>(a);
-// Sometimes it's useful to give an error type anyway, e.g. when using manage
-const succeedFull = <E,A>(a: A): SucceedEffect<E,A> => new SucceedEffect<E,A>(a);
+const succeed = <A>(a: A): SucceedEffect<never,A> => new SucceedEffect<never,A>(a);
 export class SucceedEffect<E,A> extends Effect<E,A> {
     value: A;
     constructor(a: A) {
         super('SucceedEffect');
         this.value = a;
     }
+    /**
+     * For lifting a SucceedEffect<never,A> into a SucceedEffect<E,A>.
+     * This is necessary because it's not possible to combine an Effect<never,A> with an Effect<E,B> and lift the error type into an E.
+     * This is because typescript doesn't allow lower type bounds.
+     * It's possible in scala with e.g. `flatMap[E1 >: E, B]`
+     */
+    lift = <E>() => new SucceedEffect<E,A>(this.value);
 }
 
-const flatMap = <EA,EB,A,B>(effect: Effect<EA,A>, f: (a: A) => Effect<EB,B>): FlatMapEffect<EA,EB,A,B> => new FlatMapEffect<EA,EB,A,B>(effect, f);
-export class FlatMapEffect<EA,EB,A,B> extends Effect<EB,B> {
-    effect: Effect<EA,A>;
-    f: (a: A) => Effect<EB,B>;
+const flatMap = <E,A,B>(effect: Effect<E,A>, f: (a: A) => Effect<E,B>): FlatMapEffect<E,A,B> => new FlatMapEffect<E,A,B>(effect, f);
+export class FlatMapEffect<E,A,B> extends Effect<E,B> {
+    effect: Effect<E,A>;
+    f: (a: A) => Effect<E,B>;
 
-    constructor(e: Effect<EA,A>, f: (a: A) => Effect<EB,B>) {
+    constructor(e: Effect<E,A>, f: (a: A) => Effect<E,B>) {
         super('FlatMapEffect');
         this.effect = e;
         this.f = f;
@@ -131,7 +136,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: Conti
                     break;
                 }
                 case 'FlatMapEffect': {
-                    const flatMapEffect = e as FlatMapEffect<any,any,any,any>;
+                    const flatMapEffect = e as FlatMapEffect<any,any,any>;
                     current = flatMapEffect.effect;
                     stack.pushSuccess(flatMapEffect.f);
 
@@ -165,8 +170,12 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: Conti
     }
 };
 
-// Create an AsyncEffect from a Promise
-const asyncP = <E,A>(lazy: () => Promise<A>): Effect<E,A> => async((complete: Complete<E,A>) =>
+/**
+ * Create an AsyncEffect from a Promise.
+ * We cannot know the type of a Promise rejection value, so a mapError can be used to narrow the error type, e.g.:
+ *   `asyncP(() => fetch(url)).mapError(err => ...)`
+ */
+const asyncP = <A>(lazy: () => Promise<A>): Effect<unknown,A> => async((complete: Complete<unknown,A>) =>
     lazy()
         .then(a => complete(right(a)))
         .catch(err => left(err))
@@ -249,7 +258,6 @@ const all = <E,A>(arr: Effect<E,A>[]): Effect<E,A[]> => allG(arr);
 
 export {
     succeed,
-    succeedFull,
     flatMap,
     async,
     sync,

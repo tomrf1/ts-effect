@@ -22,10 +22,12 @@ const withoutEffect = async (): Promise<Result> => {
 
 const withEffect = async (): Promise<Result> =>
     E.asyncP(getDependencyA)
-        .flatZipP(getDependencyB)
+        .flatZipP(getDependencyB, err => new Error(`${err}`))
         .flatZipWithP(
             ([a,b]) => fetch(b),
-            ([a,b], c) => ({a,c}))
+            ([a,b], c) => ({a,c}),
+            err => new Error(`${err}`)
+        )
         .runP();
 
 const runExample = (f: () => Promise<Result>, name: string) => f()
