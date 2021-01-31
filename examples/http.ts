@@ -1,5 +1,5 @@
 import * as E from '../src/api';
-import {left, right} from '../src/either';
+import {failure, success} from '../src/either';
 
 class Response {
     status: number;
@@ -59,8 +59,8 @@ const withEffect = (body: string): Promise<Response> =>
         )
         .flatMapP(resp => resp.json(), err => error('PARSE_ERROR', `${err}`))
         .validate<Response>(json => typeof json.x === 'string' ?
-            right(new Response(200, `it says ${json.x}`)) :
-            left(error('INVALID_DATA', 'Failed to parse data'))
+            success(new Response(200, `it says ${json.x}`)) :
+            failure(error('INVALID_DATA', 'Failed to parse data'))
         )
         .recover(err => {
             console.error(`Failed with ${err.type}: ${err.message}`);

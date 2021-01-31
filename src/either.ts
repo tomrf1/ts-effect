@@ -1,34 +1,34 @@
-interface Left<L> {
-    type: 'left',
+interface Failure<L> {
+    type: 'failure',
     value: L,
 }
-interface Right<R> {
-    type: 'right',
+interface Success<R> {
+    type: 'success',
     value: R,
 }
 
-export type Either<A,B> = Left<A> | Right<B>;
+export type Either<A,B> = Failure<A> | Success<B>;
 
-const left = <L,R>(l: L): Either<L,R> => ({ type: 'left', value: l });
-const right = <L,R>(r: R): Either<L,R> => ({ type: 'right', value: r });
+const failure = <L,R>(l: L): Either<L,R> => ({ type: 'failure', value: l });
+const success = <L,R>(r: R): Either<L,R> => ({ type: 'success', value: r });
 
 const map = <L,R,R2>(e: Either<L,R>) => (f: (r: R) => R2): Either<L,R2> =>
-    e.type === 'right' ? right<L,R2>(f(e.value)) : e;
+    e.type === 'success' ? success<L,R2>(f(e.value)) : e;
 const flatMap = <L,R,R2>(e: Either<L,R>) => (f: (r: R) => Either<L,R2>): Either<L,R2> =>
-    e.type === 'right' ? f(e.value) : e;
+    e.type === 'success' ? f(e.value) : e;
 const fold = <L,R,A>(e: Either<L,R>) => (f: (r: R) => A, g: (l: L) => A): A =>
-    e.type === 'left' ? g(e.value) : f(e.value);
-const toEither = <L,R>(f: () => R): Either<L,R> => {
+    e.type === 'failure' ? g(e.value) : f(e.value);
+const toEither = <R>(f: () => R): Either<unknown,R> => {
     try {
-        return right(f());
+        return success(f());
     } catch (error) {
-        return left(error);
+        return failure(error);
     }
 };
 
 export {
-    left,
-    right,
+    failure,
+    success,
     map,
     flatMap,
     fold,

@@ -1,6 +1,5 @@
-import {Either, fold, left, right} from './either';
+import {Either, fold, failure, success} from './either';
 import {Completable, Complete, Effect} from "./effect";
-import {ContinuationStack} from "./continuationStack";
 
 // An Effect that cannot fail
 const succeed = <A>(a: A): SucceedEffect<never,A> => new SucceedEffect<never,A>(a);
@@ -73,112 +72,19 @@ export class RecoverEffect<E1,E2,A> extends Effect<E2,A> {
 }
 
 /**
- * Run the program described by the Effect.
- * We (mostly) ensure stack-safety by pushing continuations to a stack inside a loop.
- * Does not catch exceptions by design.
- */
-const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: ContinuationStack<E,A>): void => {
-    let current: Effect<any,any> | null = effect;
-
-    while (current !== null) {
-        const e: Effect<any,any> = current;
-
-        switch (e.type) {
-            case 'SucceedEffect': {
-                const succeedEffect = e as SucceedEffect<any,any>;
-                const next = stack.nextSuccess();
-                if (next) {
-                    current = next.f(succeedEffect.value)
-                } else {
-                    current = null;
-                    complete(right(succeedEffect.value))
-                }
-
-                break;
-            }
-            case 'SyncEffect': {
-                const syncEffect = e as SyncEffect<any,any>;
-                const next = stack.nextSuccess();
-                const result = syncEffect.f();
-                if (next) {
-                    current = next.f(result)
-                } else {
-                    current = null;
-                    complete(right(result))
-                }
-
-                break;
-            }
-            case 'AsyncEffect': {
-                const asyncEffect = e as AsyncEffect<any,any>;
-
-                // If the effect is not truly async then this is not stack-safe
-                asyncEffect.completable((result: Either<any,any>) => {
-                    fold(result)(
-                        a => {
-                            const next = stack.nextSuccess();
-                            if (next) {
-                                run(next.f(a) as Effect<any,any>)(complete, stack);
-                            } else {
-                                complete(right(a));
-                            }
-                        },
-                        err => {
-                            const next = stack.nextFailure();
-                            if (next) {
-                                run(next.f(err) as Effect<any,any>)(complete, stack);
-                            } else {
-                                complete(left(err));
-                            }
-                        }
-                    )
-                });
-
-                current = null;
-
-                break;
-            }
-            case 'FlatMapEffect': {
-                const flatMapEffect = e as FlatMapEffect<any,any,any>;
-                current = flatMapEffect.effect;
-                stack.pushSuccess(flatMapEffect.f);
-
-                break;
-            }
-            case 'FailEffect': {
-                const failEffect = e as FailEffect<any,any>;
-                const next = stack.nextFailure();
-                if (next) {
-                    current = next.f(failEffect.error);
-                } else {
-                    current = null;
-                    complete(left(failEffect.error));
-                }
-
-                break;
-            }
-            case 'RecoverEffect': {
-                const recoverEffect = e as RecoverEffect<any,any,any>;
-                current = recoverEffect.effect;
-                stack.pushFailure(recoverEffect.r);
-
-                break;
-            }
-            default:
-                throw Error(`Unknown Effect type found by interpreter: ${e.type}`);
-        }
-    }
-};
-
-/**
  * Create an AsyncEffect from a Promise.
  * We cannot know the type of a Promise rejection value, so a mapError can be used to narrow the error type, e.g.:
  *   `asyncP(() => fetch(url)).mapError(err => ...)`
  */
 const asyncP = <A>(lazy: () => Promise<A>): Effect<unknown,A> => async((complete: Complete<unknown,A>) =>
     lazy()
-        .then(a => complete(right(a)))
-        .catch(err => left(err))
+        .then(a => complete(success(a)))
+        .catch(err => failure(err))
+);
+
+const fromEither = <E,A>(e: Either<E,A>): Effect<E,A> => fold<E,A,Effect<E,A>>(e)(
+    a => succeed(a).lift<E>(),
+    e => fail<E,A>(e)
 );
 
 /**
@@ -242,13 +148,13 @@ const allG = <E,T extends Effect<E,any>[]>(
             a => {
                 if (!hasFailed) {
                     buffer.push(a);
-                    if (buffer.length === arr.length) completeAll(right(buffer as ExtractType<E,T>));
+                    if (buffer.length === arr.length) completeAll(success(buffer as ExtractType<E,T>));
                 }
             },
             err => {
                 // TODO - support interrupts?
                 hasFailed = true;
-                completeAll(left(err));
+                completeAll(failure(err));
             }
         )))
     });
@@ -263,8 +169,8 @@ export {
     sync,
     fail,
     recover,
-    run,
     asyncP,
+    fromEither,
     manage,
     all,
     allG,

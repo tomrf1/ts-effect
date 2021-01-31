@@ -1,7 +1,7 @@
 import * as E from '../src/api';
 import {Effect} from "../src/effect";
 import {async, succeed} from "../src/api";
-import {right} from "../src/either";
+import {success} from "../src/either";
 
 /**
  * Prove that the implementation is stack-safe by composing many Effects.
@@ -31,7 +31,7 @@ const incrementEffect = (e: Effect<never,number>): Effect<never,number> => e.fla
 // Is stack-safe:
 // const incrementEffect = (e: Effect<any,number>): Effect<any,number> => e.flatMapP(n => Promise.resolve(n+1), err => err);
 // Is not stack-safe:
-// const incrementEffect = (e: Effect<never,number>): Effect<never,number> => e.flatMap(n => async(c => c(right(n+1))));
+// const incrementEffect = (e: Effect<never,number>): Effect<never,number> => e.flatMap(n => async(c => c(success(n+1))));
 
 export const withEffect = (): Promise<number> => {
     let e: Effect<never,number> = E.succeed(0);
