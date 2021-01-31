@@ -1,4 +1,4 @@
-import {Either, fold, left, right} from './either';
+import {Either, fold, failure, success} from './either';
 import {Completable, Complete, Effect} from "./effect";
 import {ContinuationStack} from "./continuationStack";
 
@@ -91,7 +91,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: Conti
                     current = next.f(succeedEffect.value)
                 } else {
                     current = null;
-                    complete(right(succeedEffect.value))
+                    complete(success(succeedEffect.value))
                 }
 
                 break;
@@ -104,7 +104,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: Conti
                     current = next.f(result)
                 } else {
                     current = null;
-                    complete(right(result))
+                    complete(success(result))
                 }
 
                 break;
@@ -120,7 +120,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: Conti
                             if (next) {
                                 run(next.f(a) as Effect<any,any>)(complete, stack);
                             } else {
-                                complete(right(a));
+                                complete(success(a));
                             }
                         },
                         err => {
@@ -128,7 +128,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: Conti
                             if (next) {
                                 run(next.f(err) as Effect<any,any>)(complete, stack);
                             } else {
-                                complete(left(err));
+                                complete(failure(err));
                             }
                         }
                     )
@@ -152,7 +152,7 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: Conti
                     current = next.f(failEffect.error);
                 } else {
                     current = null;
-                    complete(left(failEffect.error));
+                    complete(failure(failEffect.error));
                 }
 
                 break;
@@ -177,8 +177,13 @@ const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: Conti
  */
 const asyncP = <A>(lazy: () => Promise<A>): Effect<unknown,A> => async((complete: Complete<unknown,A>) =>
     lazy()
-        .then(a => complete(right(a)))
-        .catch(err => left(err))
+        .then(a => complete(success(a)))
+        .catch(err => failure(err))
+);
+
+const fromEither = <E,A>(e: Either<E,A>): Effect<E,A> => fold<E,A,Effect<E,A>>(e)(
+    a => succeed(a).lift<E>(),
+    e => fail<E,A>(e)
 );
 
 /**
@@ -242,13 +247,13 @@ const allG = <E,T extends Effect<E,any>[]>(
             a => {
                 if (!hasFailed) {
                     buffer.push(a);
-                    if (buffer.length === arr.length) completeAll(right(buffer as ExtractType<E,T>));
+                    if (buffer.length === arr.length) completeAll(success(buffer as ExtractType<E,T>));
                 }
             },
             err => {
                 // TODO - support interrupts?
                 hasFailed = true;
-                completeAll(left(err));
+                completeAll(failure(err));
             }
         )))
     });
@@ -265,6 +270,7 @@ export {
     recover,
     run,
     asyncP,
+    fromEither,
     manage,
     all,
     allG,

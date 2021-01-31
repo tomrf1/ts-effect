@@ -12,7 +12,7 @@ E.g.
 ```typescript
 import * as E from 'ts-effect/src/api';
 import {Effect} from "ts-effect/src/effect";
-import {fold, left, right} from "ts-effect/src/either";
+import {fold, failure, success} from "ts-effect/src/either";
 
 interface MyData {x: number}
 
@@ -33,8 +33,8 @@ const fetchData = (url: string): Effect<FetchError,MyData> =>
             resp => resp.json(), 
             err => error('PARSE_ERROR',`${err}`))
         .validate<MyData>(json => typeof json.x === 'number' ?
-            right(json) :
-            left(error('BAD_DATA', JSON.stringify(json)))
+            success(json) :
+            failure(error('BAD_DATA', JSON.stringify(json)))
         );
 
 fetchData(url).run(result => fold(result)(

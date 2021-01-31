@@ -1,4 +1,4 @@
-import {Either, fold, left, right} from './either';
+import {Either, fold, failure, success} from './either';
 import {
     async,
     fail,
@@ -71,8 +71,8 @@ export abstract class Effect<E,A> {
     flatMapP<B>(f: (a: A) => Promise<B>, e: (err: unknown) => E): FlatMapEffect<E,A,B> {
         const continuation = (a: A) => async<E,B>(complete =>
             f(a)
-                .then(b => complete(right(b)))
-                .catch((err: unknown) => complete(left(e(err))))
+                .then(b => complete(success(b)))
+                .catch((err: unknown) => complete(failure(e(err))))
         );
 
         return flatMap(this, continuation)
@@ -96,8 +96,8 @@ export abstract class Effect<E,A> {
     flatZipP<B>(f: (a: A) => Promise<B>, e: (err: unknown) => E): FlatMapEffect<E,A, [A,B]> {
         const continuation = (a: A) => async<E,[A,B]>(complete =>
             f(a)
-                .then(b => complete(right([a,b])))
-                .catch((err: unknown) => complete(left(e(err))))
+                .then(b => complete(success([a,b])))
+                .catch((err: unknown) => complete(failure(e(err))))
         );
 
         return flatMap(this, continuation)
@@ -107,8 +107,8 @@ export abstract class Effect<E,A> {
     flatZipWithP<B,Z>(f: (a: A) => Promise<B>, z: (a: A, b: B) => Z, e: (err: unknown) => E): FlatMapEffect<E,A, Z> {
         const continuation = (a: A) => async<E,Z>(complete =>
             f(a)
-                .then(b => complete(right(z(a,b))))
-                .catch((err: unknown) => complete(left(e(err))))
+                .then(b => complete(success(z(a,b))))
+                .catch((err: unknown) => complete(failure(e(err))))
         );
 
         return flatMap(this, continuation)

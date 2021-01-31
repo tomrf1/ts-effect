@@ -1,6 +1,6 @@
 import * as E from '../src/api';
 import {Effect} from '../src/effect';
-import {left, right} from "../src/Either";
+import {failure, success} from "../src/Either";
 
 describe('Effect', () => {
     const effect: Effect<Error,number> = E.succeed(1).lift<Error>();
@@ -11,7 +11,7 @@ describe('Effect', () => {
     it('run', () => {
         const complete = jest.fn();
         effect.run(complete);
-        expect(complete).toBeCalledWith(right(1));
+        expect(complete).toBeCalledWith(success(1));
     });
 
     it('runP', async () => {
@@ -79,13 +79,13 @@ describe('Effect', () => {
     });
 
     it('validate pass', async () => {
-        const p = effect.validate(x => right(`${x}`)).runP();
+        const p = effect.validate(x => success(`${x}`)).runP();
         await expect(p).resolves.toEqual('1');
     });
 
     it('validate fail', async () => {
         expect.assertions(1);
-        const p = effect.validate(x => left(err)).runP();
+        const p = effect.validate(x => failure(err)).runP();
         await expect(p).rejects.toBe(err);
     });
 

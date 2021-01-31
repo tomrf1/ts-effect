@@ -1,5 +1,5 @@
 import * as E from '../src/api';
-import {left, right} from "../src/either";
+import {failure, success} from "../src/either";
 import {Effect} from "../src/effect";
 const fs = require('fs');
 
@@ -38,8 +38,8 @@ const IOWithoutEffect = {
 const IOWithEffect = {
     openFile: (path: string): Effect<Error,number> => E.async(complete =>
         fs.open(path, 'r', (err: Error, fd: number) => {
-            if (err) complete(left(err));
-            else complete(right(fd));
+            if (err) complete(failure(err));
+            else complete(success(fd));
         })
     ),
 
@@ -47,8 +47,8 @@ const IOWithEffect = {
         const buffer = Buffer.alloc(512);
         return E.async(complete => {
             fs.read(fd, buffer, 0, 512, 0, (err: Error, bytesRead: number) => {
-                if (err) complete(left(err));
-                else complete(right(buffer.toString('utf-8', 0, bytesRead)))
+                if (err) complete(failure(err));
+                else complete(success(buffer.toString('utf-8', 0, bytesRead)))
             })
         })
     },
@@ -75,8 +75,8 @@ const withEffect = (path: string): Promise<Model> =>
     )
         .map((raw: string) => JSON.parse(raw))
         .validate<Model>((json: any) => validateData(json) ?
-            right(json) :
-            left(Error(`Failed to parse: ${json}`))
+            success(json) :
+            failure(Error(`Failed to parse: ${json}`))
         )
         .runP();
 
