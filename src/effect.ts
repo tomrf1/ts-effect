@@ -22,8 +22,7 @@ type EffectType =
     'AsyncEffect' |
     'SyncEffect' |
     'FailEffect' |
-    'RecoverEffect' |
-    'CatchAllEffect';
+    'RecoverEffect';
 
 /**
  * Models an effectful program that may succeed or fail.
