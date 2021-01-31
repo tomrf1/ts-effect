@@ -6,10 +6,10 @@ import {
     FlatMapEffect,
     recover,
     RecoverEffect,
-    run,
     succeed,
 } from "./api";
 import {ContinuationStack} from "./continuationStack";
+import {run} from "./run";
 
 // The callback type for reporting the result of an Effect
 export type Complete<E,A> = (result: Either<E,A>) => void;
