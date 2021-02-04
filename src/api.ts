@@ -1,4 +1,4 @@
-import {Either, fold, failure, success} from './either';
+import {Either, fold, failure, success, toEither} from './either';
 import {Completable, Complete, Effect} from "./effect";
 
 // An Effect that cannot fail
@@ -87,6 +87,9 @@ const fromEither = <E,A>(e: Either<E,A>): Effect<E,A> => fold<E,A,Effect<E,A>>(e
     e => fail<E,A>(e)
 );
 
+// Safely construct an Effect from a function that may throw an exception
+const fromUnsafe = <A>(f: () => A): Effect<unknown,A> => fromEither(toEither(f));
+
 /**
  * Produces a new Effect while guaranteeing that a resource will be released.
  *
@@ -171,6 +174,7 @@ export {
     recover,
     asyncP,
     fromEither,
+    fromUnsafe,
     manage,
     all,
     allG,
