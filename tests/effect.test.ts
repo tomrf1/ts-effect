@@ -132,6 +132,20 @@ describe('Effect', () => {
         await expect(p).resolves.toEqual(`1,a`);
     });
 
+    it('fromUnsafe success', () => {
+        const complete = jest.fn();
+        E.fromUnsafe(() => 1).run(complete);
+
+        expect(complete).toBeCalledWith(success(1));
+    });
+
+    it('fromUnsafe failure', () => {
+        const complete = jest.fn();
+        E.fromUnsafe(() => {throw err}).run(complete);
+
+        expect(complete).toBeCalledWith(failure(err));
+    });
+
     it('manage success', async () => {
         const acquire: Effect<never,number> = E.succeed(1);
         const release = jest.fn().mockImplementation(() => { console.log('release') });
