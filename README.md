@@ -14,8 +14,6 @@ import * as E from 'ts-effect/src/api';
 import {Effect} from "ts-effect/src/effect";
 import {fold, failure, success} from "ts-effect/src/either";
 
-interface MyData {x: number}
-
 type ErrorType = 'FETCH_ERROR' | 'PARSE_ERROR' | 'BAD_STATUS' | 'BAD_DATA';
 interface FetchError {
     type: ErrorType;
@@ -23,7 +21,7 @@ interface FetchError {
 }
 const error = (type: ErrorType, info: string): FetchError => ({type, info});
 
-const fetchData = (url: string): Effect<FetchError,MyData> =>
+const fetchData = (url: string): Effect<FetchError,number> =>
     E.asyncP(() => fetch(url))
         .mapError((err: unknown) => error('FETCH_ERROR',`${err}`))
         .filter(
@@ -32,8 +30,8 @@ const fetchData = (url: string): Effect<FetchError,MyData> =>
         .flatMapP(
             resp => resp.json(), 
             err => error('PARSE_ERROR',`${err}`))
-        .validate<MyData>(json => typeof json.x === 'number' ?
-            success(json) :
+        .validate<number>(json => typeof json.x === 'number' ?
+            success(json.x) :
             failure(error('BAD_DATA', JSON.stringify(json)))
         );
 

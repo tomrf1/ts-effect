@@ -132,16 +132,16 @@ describe('Effect', () => {
         await expect(p).resolves.toEqual(`1,a`);
     });
 
-    it('fromUnsafe success', () => {
+    it('unsafe success', () => {
         const complete = jest.fn();
-        E.fromUnsafe(() => 1).run(complete);
+        E.unsafe(() => 1).run(complete);
 
         expect(complete).toBeCalledWith(success(1));
     });
 
-    it('fromUnsafe failure', () => {
+    it('unsafe failure', () => {
         const complete = jest.fn();
-        E.fromUnsafe(() => {throw err}).run(complete);
+        E.unsafe(() => {throw err}).run(complete);
 
         expect(complete).toBeCalledWith(failure(err));
     });
