@@ -88,7 +88,7 @@ const fromEither = <E,A>(e: Either<E,A>): Effect<E,A> => fold<E,A,Effect<E,A>>(e
 );
 
 // Safely construct an Effect from a function that may throw an exception
-const fromUnsafe = <A>(f: () => A): Effect<unknown,A> => fromEither(toEither(f));
+const unsafe = <A>(f: () => A): Effect<unknown,A> => fromEither(toEither(f));
 
 /**
  * Produces a new Effect while guaranteeing that a resource will be released.
@@ -174,7 +174,7 @@ export {
     recover,
     asyncP,
     fromEither,
-    fromUnsafe,
+    unsafe,
     manage,
     all,
     allG,
