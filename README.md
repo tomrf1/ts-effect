@@ -36,7 +36,7 @@ const fetchData = (url: string): Effect<FetchError,number> =>
         );
 
 fetchData(url).run(result => fold(result)(
-    data => ... ,
-    err => ...
+    (data: number) => ... ,
+    (err: FetchError) => ...
 ));
 ```
