@@ -121,7 +121,8 @@ function chain<E,A,B>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>]): Effect<E,B>
 function chain<E,A,B,C>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>, (b: B) => Effect<E,C>]): Effect<E,C>;
 function chain<E,A,B,C,D>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>, (b: B) => Effect<E,C>, (c: C) => Effect<E,D>]): Effect<E,D>;
 function chain<E,A,B,C,D,EE>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>, (b: B) => Effect<E,C>, (c: C) => Effect<E,D>, (d: D) => Effect<E,EE>]): Effect<E,EE>;
-function chain<E,A,B,C,D,EE,F>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>, (b: B) => Effect<E,C>, (c: C) => Effect<E,D>, (d: D) => Effect<E,E>, (e: E) => Effect<E,F>]): Effect<E,F>;
+function chain<E,A,B,C,D,EE,F>(ea: Effect<E,A>, fs: [(a: A) => Effect<E,B>, (b: B) => Effect<E,C>, (c: C) => Effect<E,D>, (d: D) => Effect<E,EE>, (e: EE) => Effect<E,F>]): Effect<E,F>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function chain<E,A>(ea: Effect<E,A>, fs: ((x: any) => Effect<E,any>)[]): Effect<E,any> {
     return fs.reduce(
         (e, f) => e.flatMap(f),
@@ -141,11 +142,13 @@ type ExtractType<E,T> = { [K in keyof T]: T[K] extends Effect<E,infer V> ? V : n
  *
  * TODO - should error type also be heterogeneous?
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const allG = <E,T extends Effect<E,any>[]>(
     arr: T
 ): Effect<E,ExtractType<E,T>> => {
     return async((completeAll: Complete<E,ExtractType<E,T>>) => {
         let hasFailed = false;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const buffer: any[] = [];
         arr.forEach(e => e.run(result => fold(result)(
             a => {

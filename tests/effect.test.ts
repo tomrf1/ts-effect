@@ -3,6 +3,8 @@ import {Effect} from '../src/effect';
 import {failure, success} from "../src/Either";
 
 describe('Effect', () => {
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+
     const effect: Effect<Error,number> = E.succeed(1).lift<Error>();
 
     const err = new Error('failed1');
@@ -194,4 +196,6 @@ describe('Effect', () => {
         ).runP();
         await expect(p).resolves.toBe(true);
     });
+
+    /* eslint-enable @typescript-eslint/no-unused-vars */
 });

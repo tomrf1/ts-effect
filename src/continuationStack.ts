@@ -5,7 +5,8 @@ export interface Continuation<E,A,B> {
     type: 'Success' | 'Failure';
     f: (x: A) => Effect<E,B>;
 }
-export class ContinuationStack<E,A> {
+export class ContinuationStack {
+    /* eslint-disable @typescript-eslint/no-explicit-any -- type safety should have been ensured when the Effect was constructed */
     private stack: Continuation<any,any,any>[];
 
     constructor() {
@@ -28,10 +29,11 @@ export class ContinuationStack<E,A> {
         return this.nextContinuation('Failure');
     }
 
-    pushSuccess<A,B>(f: (x: A) => Effect<E,B>): void {
+    pushSuccess<E,A,B>(f: (x: A) => Effect<E,B>): void {
         this.stack.push({type: 'Success', f});
     }
-    pushFailure<B>(f: (x: Error) => Effect<E,B>): void {
+    pushFailure<E,B>(f: (x: Error) => Effect<E,B>): void {
         this.stack.push({type: 'Failure', f});
     }
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 }

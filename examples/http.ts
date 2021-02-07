@@ -8,6 +8,7 @@ class Response {
         this.status = status;
         this.body = body;
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     json(): Promise<any> {
         return Promise.resolve(JSON.parse(this.body))
     }

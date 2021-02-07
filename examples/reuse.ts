@@ -28,8 +28,8 @@ const withEffect = async (): Promise<Result> => {
     return getDependencyA
         .flatZip(getDependencyB)
         .flatZipWith(
-            ([a, b]) => fetch(b),
-            ([a, b], c) => ({a, c})
+            ([, b]) => fetch(b),
+            ([a, ], c) => ({a, c})
         )
         .runP();
 };
