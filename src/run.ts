@@ -8,7 +8,8 @@ import {Either, failure, fold, success} from "./either";
  * We (mostly) ensure stack-safety by pushing continuations to a stack inside a loop.
  * Does not catch exceptions by design.
  */
-export const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: ContinuationStack<E,A>): void => {
+export const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: ContinuationStack): void => {
+    /* eslint-disable @typescript-eslint/no-explicit-any -- type safety should have been ensured when the Effect was constructed */
     let current: Effect<any,any> | null = effect;
 
     while (current !== null) {
@@ -99,4 +100,5 @@ export const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack
                 throw Error(`Unknown Effect type found by interpreter: ${e.type}`);
         }
     }
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 };

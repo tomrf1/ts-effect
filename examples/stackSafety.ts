@@ -1,6 +1,8 @@
 import * as E from '../src/api';
 import {Effect} from "../src/effect";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {async, succeed} from "../src/api";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {success} from "../src/either";
 
 /**

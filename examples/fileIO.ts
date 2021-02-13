@@ -1,14 +1,15 @@
 import * as E from '../src/api';
 import {failure, success} from "../src/either";
 import {Effect} from "../src/effect";
-const fs = require('fs');
+import * as fs from 'fs';
 
 interface Model {
     a: string,
     b: number,
 }
 
-const validateData = (data: any): data is Model => typeof data.a === 'string' && typeof data.b === 'number';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const validateData = (data: any): data is Model => typeof data === 'object' && typeof data.a === 'string' && typeof data.b === 'number';
 
 /**
  *  A very convoluted way to read from a file - manually opening and closing it
@@ -16,7 +17,7 @@ const validateData = (data: any): data is Model => typeof data.a === 'string' &&
 
 const IOWithoutEffect = {
     openFile: (path: string): Promise<number> => new Promise<number>((resolve, reject) =>
-        fs.open(path, 'r', (err: Error, fd: number) => {
+        fs.open(path, 'r', (err: Error | null, fd: number) => {
             if (err) reject(err);
             else resolve(fd);
         })
@@ -25,7 +26,7 @@ const IOWithoutEffect = {
     readToString: (fd: number): Promise<string> => {
         const buffer = Buffer.alloc(512);
         return new Promise<string>((resolve, reject) =>
-            fs.read(fd, buffer, 0, 512, 0, (err: Error, bytesRead: number) => {
+            fs.read(fd, buffer, 0, 512, 0, (err: Error | null, bytesRead: number) => {
                 if (err) reject(err);
                 else resolve(buffer.toString('utf-8', 0, bytesRead))
             })
@@ -37,7 +38,7 @@ const IOWithoutEffect = {
 
 const IOWithEffect = {
     openFile: (path: string): Effect<Error,number> => E.async(complete =>
-        fs.open(path, 'r', (err: Error, fd: number) => {
+        fs.open(path, 'r', (err: Error | null, fd: number) => {
             if (err) complete(failure(err));
             else complete(success(fd));
         })
@@ -46,7 +47,7 @@ const IOWithEffect = {
     readToString: (fd: number): Effect<Error,string> => {
         const buffer = Buffer.alloc(512);
         return E.async(complete => {
-            fs.read(fd, buffer, 0, 512, 0, (err: Error, bytesRead: number) => {
+            fs.read(fd, buffer, 0, 512, 0, (err: Error | null, bytesRead: number) => {
                 if (err) complete(failure(err));
                 else complete(success(buffer.toString('utf-8', 0, bytesRead)))
             })
@@ -62,12 +63,12 @@ const withoutEffect = (path: string): Promise<Model> =>
             .finally(() => IOWithoutEffect.closeFile(fd))
     )
         .then((raw: string) => JSON.parse(raw))
-        .then((json: any) => {
+        .then((json: unknown) => {
             if (validateData(json)) return Promise.resolve(json);
             else return Promise.reject(`Failed to parse: ${json}`);
         });
 
-const parseJson = (raw: string): Effect<Error, any> => E
+const parseJson = (raw: string): Effect<Error, unknown> => E
     .unsafe(() => JSON.parse(raw))
     .mapError(err => Error(`Failed to parse: ${err}`));
 
@@ -78,12 +79,11 @@ const withEffect = (path: string): Promise<Model> =>
         IOWithEffect.readToString
     )
         .flatMap(parseJson)
-        .validate<Model>((json: any) => validateData(json) ?
+        .validate<Model>((json: unknown) => validateData(json) ?
             success(json) :
             failure(Error(`Failed to validate: ${json}`))
         )
         .runP();
-
 
 const runExample = (f: (path: string) => Promise<Model>, name: string) =>
     f('./examples/example-data.json')

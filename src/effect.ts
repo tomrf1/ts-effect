@@ -3,9 +3,7 @@ import {
     async,
     fail,
     flatMap,
-    FlatMapEffect,
     recover,
-    RecoverEffect,
     succeed,
 } from "./api";
 import {ContinuationStack} from "./continuationStack";
@@ -43,7 +41,7 @@ export abstract class Effect<E,A> {
 
     // Run the Effect with the given completion callback. Does not catch exceptions
     run(complete: Complete<E,A>): void {
-        run(this)(complete, new ContinuationStack<E,A>())
+        run(this)(complete, new ContinuationStack())
     }
 
     // Run the Effect as a Promise. If an exception is thrown while running the Effect then the Promise will reject
@@ -53,7 +51,7 @@ export abstract class Effect<E,A> {
                 a => resolve(a),
                 err => reject(err)
             );
-            run(this)(complete, new ContinuationStack<E,A>());
+            run(this)(complete, new ContinuationStack());
         });
     }
 
