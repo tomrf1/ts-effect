@@ -67,16 +67,20 @@ const withoutEffect = (path: string): Promise<Model> =>
             else return Promise.reject(`Failed to parse: ${json}`);
         });
 
+const parseJson = (raw: string): Effect<Error, any> => E
+    .unsafe(() => JSON.parse(raw))
+    .mapError(err => Error(`Failed to parse: ${err}`));
+
 const withEffect = (path: string): Promise<Model> =>
     E.manage<Error,number,string>(
         IOWithEffect.openFile(path),
         IOWithEffect.closeFile,
         IOWithEffect.readToString
     )
-        .map((raw: string) => JSON.parse(raw))
+        .flatMap(parseJson)
         .validate<Model>((json: any) => validateData(json) ?
             success(json) :
-            failure(Error(`Failed to parse: ${json}`))
+            failure(Error(`Failed to validate: ${json}`))
         )
         .runP();
 
