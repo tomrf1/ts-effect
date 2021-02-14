@@ -57,7 +57,7 @@ interface MyError {
 const error = (type: ErrorType, message: string): MyError => ({type, message});
 
 const withEffect = (body: string): Promise<Response> =>
-    E.unsafe(() => JSON.parse(body))
+    E.sync(() => JSON.parse(body))
         .mapError(err => error('BAD_REQUEST', `${err}`))
         .validate<number>(json => typeof json.n === 'number' ?
             success(json.n) :

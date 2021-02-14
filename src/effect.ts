@@ -29,8 +29,8 @@ type EffectType =
  *
  * Effects can be composed using the methods on this class.
  *
- * Exceptions are not caught when the Effect is run.
- * However, Promise.catch is called when flatMapP/flatZipP/flatZipWithP are used.
+ * When the Effect is run, exceptions are only caught where the SyncEffect type is used.
+ * Promise.catch is called when flatMapP/flatZipP/flatZipWithP are used.
  */
 export abstract class Effect<E,A> {
     type: EffectType;
@@ -57,7 +57,7 @@ export abstract class Effect<E,A> {
 
     // Apply f to the result of the Effect
     map<B>(f: (a: A) => B): Effect<E,B> {
-        return flatMap(this, (a: A) => succeed(f(a)).lift<E>())
+        return flatMap(this, (a: A) => succeed(f(a)))
     }
 
     // Apply f to the result of the Effect and flatten the nested Effects
@@ -115,7 +115,7 @@ export abstract class Effect<E,A> {
     // Apply predicate to the result of the Effect and either produce an error using e, or leave the value unchanged
     filter(p: (a: A) => boolean, e: (a: A) => E): Effect<E,A> {
         return flatMap(this, (a: A) => {
-            if (p(a)) return succeed(a).lift<E>();
+            if (p(a)) return succeed(a);
             else return fail(e(a));
         })
     }
@@ -124,7 +124,7 @@ export abstract class Effect<E,A> {
     validate<B>(f: (a: A) => Either<E,B>): Effect<E,B> {
         return flatMap(this, (a: A) =>
             fold<E,B,Effect<E,B>>(f(a))(
-                b => succeed(b).lift<E>(),
+                b => succeed(b),
                 err => fail(err)
             )
         );
@@ -137,7 +137,7 @@ export abstract class Effect<E,A> {
 
     // If the Effect fails then apply f to the error to produce a value of type A
     recover(f: (e: E) => A): Effect<E,A> {
-        return recover(this, e => succeed(f(e)).lift<E>());
+        return recover(this, e => succeed(f(e)));
     }
 
     // If the Effect fails then apply f to the error to produce an Effect of type A

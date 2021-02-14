@@ -5,7 +5,7 @@ import {failure, success} from "../src/Either";
 describe('Effect', () => {
     /* eslint-disable @typescript-eslint/no-unused-vars */
 
-    const effect: Effect<Error,number> = E.succeed(1).lift<Error>();
+    const effect: Effect<Error,number> = E.succeed(1);
 
     const err = new Error('failed1');
     const fails: Effect<Error,number> = E.fail(err);
@@ -27,7 +27,7 @@ describe('Effect', () => {
     });
 
     it('flatMap', async () => {
-        const p = effect.flatMap(x => E.succeed(x * 2).lift<Error>()).runP();
+        const p = effect.flatMap(x => E.succeed(x * 2)).runP();
         await expect(p).resolves.toEqual(2);
     });
 
@@ -50,12 +50,12 @@ describe('Effect', () => {
     });
 
     it('flatZip', async () => {
-        const p = effect.flatZip(x => E.succeed(x*2).lift<Error>()).runP();
+        const p = effect.flatZip(x => E.succeed(x*2)).runP();
         await expect(p).resolves.toEqual([1,2]);
     });
 
     it('flatZipWith', async () => {
-        const p = effect.flatZipWith(x => E.succeed(x*2).lift<Error>(), (x, y) => ({x,y})).runP();
+        const p = effect.flatZipWith(x => E.succeed(x*2), (x, y) => ({x,y})).runP();
         await expect(p).resolves.toEqual({x: 1, y: 2});
     });
 
@@ -106,7 +106,7 @@ describe('Effect', () => {
 
     it('recoverWith', async () => {
         expect.assertions(1);
-        const p = fails.recoverWith(e => E.succeed(2).lift<Error>()).runP();
+        const p = fails.recoverWith(e => E.succeed(2)).runP();
         await expect(p).resolves.toEqual(2);
     });
 
@@ -119,7 +119,7 @@ describe('Effect', () => {
     });
 
     it('all with fail', async () => {
-        const p = E.all([E.succeed(1).lift<Error>(), fails])
+        const p = E.all([E.succeed(1), fails])
             .map((arr: number[]) => arr.reduce((x,y) => x+y))
             .runP();
 
@@ -134,16 +134,16 @@ describe('Effect', () => {
         await expect(p).resolves.toEqual(`1,a`);
     });
 
-    it('unsafe success', () => {
+    it('sync success', () => {
         const complete = jest.fn();
-        E.unsafe(() => 1).run(complete);
+        E.sync(() => 1).run(complete);
 
         expect(complete).toBeCalledWith(success(1));
     });
 
-    it('unsafe failure', () => {
+    it('sync failure', () => {
         const complete = jest.fn();
-        E.unsafe(() => {throw err}).run(complete);
+        E.sync(() => {throw err}).run(complete);
 
         expect(complete).toBeCalledWith(failure(err));
     });
@@ -172,7 +172,7 @@ describe('Effect', () => {
     });
 
     it('manage failure in effect', async () => {
-        const acquire: Effect<Error,number> = E.succeed(1).lift<Error>();
+        const acquire: Effect<Error,number> = E.succeed(1);
         const release = jest.fn().mockImplementation(() => { console.log('release') });
 
         const p = E.manage<Error,number,number>(acquire,release, a => fails).runP();
