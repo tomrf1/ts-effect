@@ -69,7 +69,7 @@ const withoutEffect = (path: string): Promise<Model> =>
         });
 
 const parseJson = (raw: string): Effect<Error, unknown> => E
-    .unsafe(() => JSON.parse(raw))
+    .sync(() => JSON.parse(raw))
     .mapError(err => Error(`Failed to parse: ${err}`));
 
 const withEffect = (path: string): Promise<Model> =>

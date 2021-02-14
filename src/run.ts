@@ -17,7 +17,7 @@ export const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack
 
         switch (e.type) {
             case 'SucceedEffect': {
-                const succeedEffect = e as SucceedEffect<any,any>;
+                const succeedEffect = e as SucceedEffect<any>;
                 const next = stack.nextSuccess();
                 if (next) {
                     current = next.f(succeedEffect.value)
@@ -29,14 +29,25 @@ export const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack
                 break;
             }
             case 'SyncEffect': {
-                const syncEffect = e as SyncEffect<any,any>;
-                const next = stack.nextSuccess();
-                const result = syncEffect.f();
-                if (next) {
-                    current = next.f(result)
-                } else {
-                    current = null;
-                    complete(success(result))
+                const syncEffect = e as SyncEffect<any>;
+                try {
+                    const result = syncEffect.f();
+
+                    const next = stack.nextSuccess();
+                    if (next) {
+                        current = next.f(result)
+                    } else {
+                        current = null;
+                        complete(success(result))
+                    }
+                } catch (err) {
+                    const next = stack.nextFailure();
+                    if (next) {
+                        current = next.f(err);
+                    } else {
+                        current = null;
+                        complete(failure(err));
+                    }
                 }
 
                 break;
@@ -78,7 +89,7 @@ export const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack
                 break;
             }
             case 'FailEffect': {
-                const failEffect = e as FailEffect<any,any>;
+                const failEffect = e as FailEffect<any>;
                 const next = stack.nextFailure();
                 if (next) {
                     current = next.f(failEffect.error);

@@ -1,21 +1,14 @@
-import {Either, fold, failure, success, toEither} from './either';
+import {Either, fold, failure, success} from './either';
 import {Completable, Complete, Effect} from "./effect";
 
 // An Effect that cannot fail
-const succeed = <A>(a: A): SucceedEffect<never,A> => new SucceedEffect<never,A>(a);
-export class SucceedEffect<E,A> extends Effect<E,A> {
+const succeed = <A>(a: A): SucceedEffect<A> => new SucceedEffect<A>(a);
+export class SucceedEffect<A> extends Effect<never,A> {
     value: A;
     constructor(a: A) {
         super('SucceedEffect');
         this.value = a;
     }
-    /**
-     * For lifting a SucceedEffect<never,A> into a SucceedEffect<E,A>.
-     * This is necessary because it's not possible to combine an Effect<never,A> with an Effect<E,B> and lift the error type into an E.
-     * This is because typescript doesn't allow lower type bounds.
-     * It's possible in scala with e.g. `flatMap[E1 >: E, B]`
-     */
-    lift = <E>() => new SucceedEffect<E,A>(this.value);
 }
 
 const flatMap = <E,A,B>(effect: Effect<E,A>, f: (a: A) => Effect<E,B>): FlatMapEffect<E,A,B> => new FlatMapEffect<E,A,B>(effect, f);
@@ -41,8 +34,11 @@ export class AsyncEffect<E,A> extends Effect<E,A> {
     }
 }
 
-const sync = <E,A>(f: () => A): SyncEffect<E,A> => new SyncEffect<E,A>(f);
-export class SyncEffect<E,A> extends Effect<E,A> {
+// Construct an Effect from a function that may throw an exception.
+// If an exception is thrown when the Effect is run then the Effect will fail with the exception value (of type `unknown`).
+// `mapError` can then be used to narrow the error type.
+const sync = <A>(f: () => A): SyncEffect<A> => new SyncEffect<A>(f);
+export class SyncEffect<A> extends Effect<unknown,A> {
     f: () => A;
 
     constructor(f: () => A) {
@@ -51,8 +47,8 @@ export class SyncEffect<E,A> extends Effect<E,A> {
     }
 }
 
-const fail = <E,A>(error: E): FailEffect<E,A> => new FailEffect<E,A>(error);
-export class FailEffect<E,A> extends Effect<E,A> {
+const fail = <E>(error: E): FailEffect<E> => new FailEffect<E>(error);
+export class FailEffect<E> extends Effect<E,never> {
     error: E;
     constructor(error: E) {
         super('FailEffect');
@@ -83,12 +79,9 @@ const asyncP = <A>(lazy: () => Promise<A>): Effect<unknown,A> => async((complete
 );
 
 const fromEither = <E,A>(e: Either<E,A>): Effect<E,A> => fold<E,A,Effect<E,A>>(e)(
-    a => succeed(a).lift<E>(),
-    e => fail<E,A>(e)
+    a => succeed(a),
+    e => fail<E>(e)
 );
-
-// Safely construct an Effect from a function that may throw an exception
-const unsafe = <A>(f: () => A): Effect<unknown,A> => fromEither(toEither(f));
 
 /**
  * Produces a new Effect while guaranteeing that a resource will be released.
@@ -177,7 +170,6 @@ export {
     recover,
     asyncP,
     fromEither,
-    unsafe,
     manage,
     all,
     allG,
