@@ -6,7 +6,7 @@ import {Either, failure, fold, success} from "./either";
 /**
  * Run the program described by the Effect.
  * We (mostly) ensure stack-safety by pushing continuations to a stack inside a loop.
- * Does not catch exceptions by design.
+ * Exceptions are only caught inside `SyncEffect`.
  */
 export const run = <E,A>(effect: Effect<E,A>) => (complete: Complete<E,A>, stack: ContinuationStack): void => {
     /* eslint-disable @typescript-eslint/no-explicit-any -- type safety should have been ensured when the Effect was constructed */

@@ -39,7 +39,7 @@ export abstract class Effect<E,A> {
         this.type = type;
     }
 
-    // Run the Effect with the given completion callback. Does not catch exceptions
+    // Run the Effect with the given completion callback. Exceptions are only caught inside `SyncEffect`.
     run(complete: Complete<E,A>): void {
         run(this)(complete, new ContinuationStack())
     }
