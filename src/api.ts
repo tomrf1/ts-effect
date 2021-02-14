@@ -131,7 +131,7 @@ type ExtractType<E,T> = { [K in keyof T]: T[K] extends Effect<E,infer V> ? V : n
  * The input array of Effects may be heterogeneous.
  *
  * Note - the compiler needs help with the type parameter here if you wish to handle the result as a tuple rather than an array, e.g.
- *   `allG<[Effect<number>,Effect<string>]>([E.succeed(1), E.succeed('a')]).map(([n,s]) => ...)`
+ *   `allG<never,[Effect<never,number>,Effect<never,string>]>([E.succeed(1), E.succeed('a')]).map(([n,s]) => ...)`
  *
  * TODO - should error type also be heterogeneous?
  */
