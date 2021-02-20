@@ -46,9 +46,10 @@ fetchData(url).run(result => fold(result)(
 #### `sync`
 Construct an Effect from a synchronous function that may throw an exception.
 If an exception is thrown when the Effect is run then the Effect will fail with the exception value (of type `unknown`).
+A `Task<A>` is an `Effect<unknown,A>`.
 
 ```typescript
-const encodeURIEffect = (uri: string): Effect<unknown, string> => sync(() => encodeURI(uri))
+const encodeURIEffect = (uri: string): Task<string> => sync(() => encodeURI(uri))
 ```
 
 #### `async`

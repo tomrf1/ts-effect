@@ -1,5 +1,5 @@
 import {Either, fold, failure, success} from './either';
-import {Completable, Complete, Effect} from "./effect";
+import {Completable, Complete, Effect, Task} from "./effect";
 
 // An Effect that cannot fail
 const succeed = <A>(a: A): SucceedEffect<A> => new SucceedEffect<A>(a);
@@ -72,7 +72,7 @@ export class RecoverEffect<E1,E2,A> extends Effect<E2,A> {
  * We cannot know the type of a Promise rejection value, so a mapError can be used to narrow the error type, e.g.:
  *   `asyncP(() => fetch(url)).mapError(err => ...)`
  */
-const asyncP = <A>(lazy: () => Promise<A>): Effect<unknown,A> => async((complete: Complete<unknown,A>) =>
+const asyncP = <A>(lazy: () => Promise<A>): Task<A> => async((complete: Complete<unknown,A>) =>
     lazy()
         .then(a => complete(success(a)))
         .catch(err => failure(err))
