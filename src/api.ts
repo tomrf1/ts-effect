@@ -1,5 +1,5 @@
 import {Either, fold, failure, success} from './either';
-import {Completable, Complete, Effect} from "./effect";
+import {Completable, Complete, Effect, Task} from "./effect";
 
 // An Effect that cannot fail
 const succeed = <A>(a: A): SucceedEffect<A> => new SucceedEffect<A>(a);
@@ -72,7 +72,7 @@ export class RecoverEffect<E1,E2,A> extends Effect<E2,A> {
  * We cannot know the type of a Promise rejection value, so a mapError can be used to narrow the error type, e.g.:
  *   `asyncP(() => fetch(url)).mapError(err => ...)`
  */
-const asyncP = <A>(lazy: () => Promise<A>): Effect<unknown,A> => async((complete: Complete<unknown,A>) =>
+const asyncP = <A>(lazy: () => Promise<A>): Task<A> => async((complete: Complete<unknown,A>) =>
     lazy()
         .then(a => complete(success(a)))
         .catch(err => failure(err))
@@ -131,7 +131,7 @@ type ExtractType<E,T> = { [K in keyof T]: T[K] extends Effect<E,infer V> ? V : n
  * The input array of Effects may be heterogeneous.
  *
  * Note - the compiler needs help with the type parameter here if you wish to handle the result as a tuple rather than an array, e.g.
- *   `allG<[Effect<number>,Effect<string>]>([E.succeed(1), E.succeed('a')]).map(([n,s]) => ...)`
+ *   `allG<never,[Effect<never,number>,Effect<never,string>]>([E.succeed(1), E.succeed('a')]).map(([n,s]) => ...)`
  *
  * TODO - should error type also be heterogeneous?
  */

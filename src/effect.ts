@@ -145,3 +145,6 @@ export abstract class Effect<E,A> {
         return recover(this, f);
     }
 }
+
+// For when the type of the error is not known, or is not important to the rest of the program, e.g. just for logging
+export type Task<A> = Effect<unknown,A>;
