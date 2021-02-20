@@ -66,7 +66,9 @@ const openFile = (path: string): Effect<Error,number> => async(complete =>
 #### `asyncP`
 Construct an asynchronous Effect from a Promise. We cannot know the type of a Promise rejection value, so the error type is `unknown`.
 ```typescript
-const fetchEffect = (url: string): Effect<string,Response> => asyncP(() => fetch(url)).mapError((err: unknown) => `Fetch error: $err`);
+const fetchEffect = (url: string): Effect<string,Response> => 
+    asyncP(() => fetch(url))
+        .mapError((err: unknown) => `Fetch error: $err`);
 ```
 
 #### `manage`
