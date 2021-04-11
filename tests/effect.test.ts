@@ -1,6 +1,6 @@
 import * as E from '../src/api';
 import {Effect} from '../src/effect';
-import {failure, success} from "../src/Either";
+import {failure, success} from "../src/either";
 
 describe('Effect', () => {
     /* eslint-disable @typescript-eslint/no-unused-vars */

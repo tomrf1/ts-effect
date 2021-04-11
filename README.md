@@ -10,9 +10,8 @@ Error types are encoded in the `Effect` type, as an alternative to exceptions/re
 E.g.
 
 ```typescript
-import * as E from 'ts-effect/src/api';
-import {Effect} from "ts-effect/src/effect";
-import {fold, failure, success} from "ts-effect/src/either";
+import { E, EitherApi } from 'ts-effect';
+import type { Effect } from 'ts-effect';
 
 type ErrorType = 'FETCH_ERROR' | 'PARSE_ERROR' | 'BAD_STATUS' | 'BAD_DATA';
 interface FetchError {
@@ -31,11 +30,11 @@ const fetchData = (url: string): Effect<FetchError,number> =>
             resp => resp.json(), 
             err => error('PARSE_ERROR',`${err}`))
         .validate<number>(json => typeof json.x === 'number' ?
-            success(json.x) :
-            failure(error('BAD_DATA', JSON.stringify(json)))
+            EitherApi.success(json.x) :
+            EitherApi.failure(error('BAD_DATA', JSON.stringify(json)))
         );
 
-fetchData(url).run(result => fold(result)(
+fetchData(url).run(result => EitherApi.fold(result)(
     (data: number) => ... ,
     (err: FetchError) => ...
 ));
