@@ -1,6 +1,8 @@
 {
   "name": "ts-effect",
   "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "dependencies": {},
   "devDependencies": {
     "@babel/core": "^7.11.6",
@@ -17,11 +19,15 @@
     "typescript": "^4.0.3"
   },
   "scripts": {
-    "clean": "rm -rf target",
+    "clean": "rm -rf dist",
     "build": "tsc",
     "build-examples": "tsc -p tsconfig.examples.json",
     "examples": "npm run build-examples && node target/examples/examples.js",
     "test": "npm run build && jest --verbose",
     "lint": "eslint . --ext .ts"
-  }
+  },
+  "files": [
+    "dist/*",
+    "src/**/*"
+  ]
 }
