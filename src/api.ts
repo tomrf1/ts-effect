@@ -75,7 +75,7 @@ export class RecoverEffect<E1,E2,A> extends Effect<E2,A> {
 const asyncP = <A>(lazy: () => Promise<A>): Task<A> => async((complete: Complete<unknown,A>) =>
     lazy()
         .then(a => complete(success(a)))
-        .catch(err => failure(err))
+        .catch(err => complete(failure(err)))
 );
 
 const fromEither = <E,A>(e: Either<E,A>): Effect<E,A> => fold<E,A,Effect<E,A>>(e)(
